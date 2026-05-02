@@ -99,7 +99,7 @@ class DPREntryBase(BaseModel):
     project_id: UUID
     supervisor_id: UUID
     entry_date: date
-    work_type_id: UUID
+    work_type_id: Optional[UUID] = None
     block_id: Optional[UUID] = None
     floor_id: Optional[UUID] = None
     area_id: Optional[UUID] = None
