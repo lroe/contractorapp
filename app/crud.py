@@ -1,0 +1,97 @@
+from sqlalchemy.orm import Session
+from . import models, schemas
+import uuid
+
+# User CRUD
+def get_user(db: Session, user_id: uuid.UUID):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def get_user_by_phone(db: Session, phone: str):
+    return db.query(models.User).filter(models.User.phone == phone).first()
+
+def create_user(db: Session, user: schemas.UserCreate):
+    db_user = models.User(
+        name=user.name,
+        phone=user.phone,
+        email=user.email,
+        password_hash=user.password, # In a real app, hash this!
+        role=user.role
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+# Project CRUD
+def create_project(db: Session, project: schemas.ProjectCreate):
+    db_project = models.Project(**project.dict())
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+def get_projects(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Project).offset(skip).limit(limit).all()
+
+# DPR CRUD
+def create_dpr_entry(db: Session, dpr: schemas.DPREntryCreate):
+    db_dpr = models.DPREntry(**dpr.dict())
+    db.add(db_dpr)
+    db.commit()
+    db.refresh(db_dpr)
+    return db_dpr
+
+def add_dpr_media(db: Session, media: schemas.DPRMediaCreate):
+    db_media = models.DPRMedia(**media.dict())
+    db.add(db_media)
+    db.commit()
+    db.refresh(db_media)
+    return db_media
+
+def get_dpr_entries(db: Session, project_id: uuid.UUID):
+    return db.query(models.DPREntry).filter(models.DPREntry.project_id == project_id).all()
+
+# Gang CRUD
+def create_gang(db: Session, project_id: uuid.UUID, name: str, supervisor_id: uuid.UUID):
+    db_gang = models.Gang(project_id=project_id, name=name, supervisor_id=supervisor_id)
+    db.add(db_gang)
+    db.commit()
+    db.refresh(db_gang)
+    return db_gang
+
+def get_gangs(db: Session, project_id: uuid.UUID):
+    return db.query(models.Gang).filter(models.Gang.project_id == project_id).all()
+
+# Worker CRUD
+def create_worker(db: Session, project_id: uuid.UUID, name: str, phone: str = None, skill_type: str = None):
+    db_worker = models.Worker(project_id=project_id, name=name, phone=phone, skill_type=skill_type)
+    db.add(db_worker)
+    db.commit()
+    db.refresh(db_worker)
+    return db_worker
+
+def assign_worker_to_gang(db: Session, worker_id: uuid.UUID, gang_id: uuid.UUID):
+    db_worker = db.query(models.Worker).filter(models.Worker.id == worker_id).first()
+    if db_worker:
+        db_worker.gang_id = gang_id
+        db.commit()
+        db.refresh(db_worker)
+    return db_worker
+
+def get_workers_by_gang(db: Session, gang_id: uuid.UUID):
+    return db.query(models.Worker).filter(models.Worker.gang_id == gang_id).all()
+
+# Attendance CRUD
+def mark_attendance(db: Session, project_id: uuid.UUID, worker_id: uuid.UUID, gang_id: uuid.UUID, entry_date: any, status: str, marked_by: uuid.UUID):
+    db_attendance = models.Attendance(
+        project_id=project_id,
+        worker_id=worker_id,
+        gang_id=gang_id,
+        entry_date=entry_date,
+        status=status,
+        marked_by=marked_by
+    )
+    db.add(db_attendance)
+    db.commit()
+    db.refresh(db_attendance)
+    return db_attendance
