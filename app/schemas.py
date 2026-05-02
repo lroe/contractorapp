@@ -135,3 +135,67 @@ class Attendance(AttendanceBase):
 
     class Config:
         from_attributes = True
+
+# Material Schemas
+class MaterialBase(BaseModel):
+    name: str
+    unit: str
+    category: Optional[str] = None
+
+class MaterialCreate(MaterialBase):
+    pass
+
+class Material(MaterialBase):
+    id: UUID
+    class Config:
+        from_attributes = True
+
+class ProjectInventoryBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    current_quantity: Decimal
+
+class ProjectInventory(ProjectInventoryBase):
+    id: UUID
+    last_updated: datetime
+    material: Optional[Material] = None # For joined responses
+    class Config:
+        from_attributes = True
+
+class MaterialRequestBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    remarks: Optional[str] = None
+
+class MaterialRequestCreate(MaterialRequestBase):
+    requested_by: UUID
+
+class MaterialRequestUpdate(BaseModel):
+    status: str # approved, rejected, received
+    remarks: Optional[str] = None
+
+class MaterialRequest(MaterialRequestBase):
+    id: UUID
+    requested_by: UUID
+    status: str
+    created_at: datetime
+    material: Optional[Material] = None # For joined responses
+    class Config:
+        from_attributes = True
+
+class MaterialUsageBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    dpr_entry_id: Optional[UUID] = None
+    usage_date: Optional[date] = None
+
+class MaterialUsageCreate(MaterialUsageBase):
+    logged_by: UUID
+
+class MaterialUsage(MaterialUsageBase):
+    id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True

@@ -206,3 +206,39 @@ def get_task_dpr(task_id: uuid.UUID, db: Session = Depends(get_db)):
     return db.query(models.DPREntry).filter(
         models.DPREntry.linked_task_id == task_id
     ).order_by(models.DPREntry.entry_date.desc()).all()
+
+# Material Master
+@app.get("/materials/", response_model=List[schemas.Material])
+def read_materials(db: Session = Depends(get_db)):
+    return crud.get_materials(db)
+
+@app.post("/materials/", response_model=schemas.Material)
+def create_material(material: schemas.MaterialCreate, db: Session = Depends(get_db)):
+    return crud.create_material(db, material)
+
+# Inventory
+@app.get("/projects/{project_id}/inventory/", response_model=List[schemas.ProjectInventory])
+def read_project_inventory(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.ProjectInventory).filter(models.ProjectInventory.project_id == project_id).all()
+
+# Requests (Indents)
+@app.get("/projects/{project_id}/material-requests/", response_model=List[schemas.MaterialRequest])
+def read_material_requests(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_material_requests(db, project_id)
+
+@app.post("/material-requests/", response_model=schemas.MaterialRequest)
+def create_material_request(request: schemas.MaterialRequestCreate, db: Session = Depends(get_db)):
+    return crud.create_material_request(db, request)
+
+@app.patch("/material-requests/{request_id}/", response_model=schemas.MaterialRequest)
+def update_material_request_status(request_id: uuid.UUID, update: schemas.MaterialRequestUpdate, db: Session = Depends(get_db)):
+    return crud.update_material_request_status(db, request_id, update.status)
+
+# Usage
+@app.post("/material-usage/", response_model=schemas.MaterialUsage)
+def log_material_usage(usage: schemas.MaterialUsageCreate, db: Session = Depends(get_db)):
+    return crud.log_material_usage(db, usage)
+
+@app.get("/projects/{project_id}/material-usage/", response_model=List[schemas.MaterialUsage])
+def read_material_usage(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.MaterialUsage).filter(models.MaterialUsage.project_id == project_id).all()

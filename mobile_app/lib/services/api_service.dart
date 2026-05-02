@@ -243,4 +243,50 @@ class ApiService {
       throw Exception('Failed to load media');
     }
   }
+
+  // Materials
+  Future<List<dynamic>> getMaterials() async {
+    final response = await http.get(Uri.parse('$baseUrl/materials/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load materials');
+  }
+
+  Future<List<dynamic>> getProjectInventory(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/inventory/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load inventory');
+  }
+
+  Future<List<dynamic>> getMaterialRequests(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/material-requests/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load material requests');
+  }
+
+  Future<void> createMaterialRequest(Map<String, dynamic> requestData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/material-requests/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(requestData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to create material request');
+  }
+
+  Future<void> updateMaterialRequestStatus(String requestId, String status) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/material-requests/$requestId/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"status": status}),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to update request status');
+  }
+
+  Future<void> logMaterialUsage(Map<String, dynamic> usageData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/material-usage/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(usageData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to log material usage');
+  }
 }

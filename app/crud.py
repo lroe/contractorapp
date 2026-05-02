@@ -109,3 +109,70 @@ def get_project_supervisors(db: Session, project_id: uuid.UUID):
         models.ProjectUser.project_id == project_id,
         models.ProjectUser.role == 'supervisor'
     ).all()
+
+# Materials
+def get_materials(db: Session):
+    return db.query(models.Material).all()
+
+def create_material(db: Session, material: schemas.MaterialCreate):
+    db_material = models.Material(**material.dict())
+    db.add(db_material)
+    db.commit()
+    db.refresh(db_material)
+    return db_material
+
+# Inventory
+def get_project_inventory(db: Session, project_id: uuid.UUID):
+    return db.query(models.ProjectInventory).filter(models.ProjectInventory.project_id == project_id).all()
+
+def update_inventory(db: Session, project_id: uuid.UUID, material_id: uuid.UUID, delta: float):
+    db_inventory = db.query(models.ProjectInventory).filter(
+        models.ProjectInventory.project_id == project_id,
+        models.ProjectInventory.material_id == material_id
+    ).first()
+    
+    if not db_inventory:
+        db_inventory = models.ProjectInventory(
+            project_id=project_id,
+            material_id=material_id,
+            current_quantity=delta
+        )
+        db.add(db_inventory)
+    else:
+        db_inventory.current_quantity += Decimal(str(delta))
+    
+    db.commit()
+    db.refresh(db_inventory)
+    return db_inventory
+
+# Requests
+def create_material_request(db: Session, request: schemas.MaterialRequestCreate):
+    db_request = models.MaterialRequest(**request.dict())
+    db.add(db_request)
+    db.commit()
+    db.refresh(db_request)
+    return db_request
+
+def get_material_requests(db: Session, project_id: uuid.UUID):
+    return db.query(models.MaterialRequest).filter(models.MaterialRequest.project_id == project_id).all()
+
+def update_material_request_status(db: Session, request_id: uuid.UUID, status: str):
+    db_request = db.query(models.MaterialRequest).filter(models.MaterialRequest.id == request_id).first()
+    if db_request:
+        db_request.status = status
+        # If received, auto-update inventory
+        if status == "received":
+            update_inventory(db, db_request.project_id, db_request.material_id, float(db_request.quantity))
+        db.commit()
+        db.refresh(db_request)
+    return db_request
+
+# Usage
+def log_material_usage(db: Session, usage: schemas.MaterialUsageCreate):
+    db_usage = models.MaterialUsage(**usage.dict())
+    db.add(db_usage)
+    # Deduct from inventory
+    update_inventory(db, usage.project_id, usage.material_id, -float(usage.quantity))
+    db.commit()
+    db.refresh(db_usage)
+    return db_usage

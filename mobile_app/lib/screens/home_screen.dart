@@ -5,6 +5,7 @@ import 'attendance_screen.dart';
 import 'project_management_screen.dart';
 import 'tasks_screen.dart';
 import 'report_detail_screen.dart';
+import 'inventory_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
@@ -326,6 +327,19 @@ class _HomeScreenState extends State<HomeScreen> {
               return;
             }
             Navigator.push(context, MaterialPageRoute(builder: (context) => TasksScreen(project: _selectedProject!, user: _currentUser!)));
+          },
+        ),
+        _buildActionCard(
+          context,
+          'Inventory',
+          Icons.inventory_2_outlined,
+          const Color(0xFFEC4899),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => InventoryScreen(project: _selectedProject!, user: _currentUser!)));
           },
         ),
       ],

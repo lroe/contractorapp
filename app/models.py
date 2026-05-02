@@ -149,3 +149,44 @@ class Attendance(Base):
         UniqueConstraint('worker_id', 'entry_date', name='_worker_attendance_uc'),
         CheckConstraint(status.in_(['present', 'absent', 'half_day']), name='attendance_status_check'),
     )
+
+class Material(Base):
+    __tablename__ = "materials"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    unit = Column(String(20), nullable=False) # Bags, Tons, Cum, Units
+    category = Column(String(50)) # e.g. Structural, Finishing, Plumbing
+
+class ProjectInventory(Base):
+    __tablename__ = "project_inventory"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id", ondelete="CASCADE"), index=True)
+    current_quantity = Column(Numeric(12, 2), default=0)
+    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('project_id', 'material_id', name='_project_material_inventory_uc'),
+    )
+
+class MaterialRequest(Base):
+    __tablename__ = "material_requests"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    quantity = Column(Numeric(12, 2), nullable=False)
+    requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    status = Column(String(20), default="pending") # pending, approved, rejected, received
+    remarks = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class MaterialUsage(Base):
+    __tablename__ = "material_usage"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    dpr_entry_id = Column(UUID(as_uuid=True), ForeignKey("dpr_entries.id", ondelete="CASCADE"), nullable=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    quantity = Column(Numeric(12, 2), nullable=False)
+    logged_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    usage_date = Column(Date, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
