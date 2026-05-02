@@ -19,11 +19,15 @@ class ApiService {
     }
   }
 
-  Future<Project> createProject(String name) async {
+  Future<Project> createProject(String name, String ownerId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/projects/'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"name": name, "status": "active"}),
+      body: jsonEncode({
+        "name": name,
+        "status": "active",
+        "owner_id": ownerId,
+      }),
     );
 
     if (response.statusCode == 200) {

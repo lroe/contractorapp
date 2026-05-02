@@ -233,14 +233,14 @@ class _HomeScreenState extends State<HomeScreen> {
           'Create Project',
           Icons.add_business,
           const Color(0xFF1E293B),
-          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProjectManagementScreen())),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
         ),
         _buildActionCard(
           context,
           'Supervisors',
           Icons.person_search,
           const Color(0xFF3B82F6),
-          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProjectManagementScreen())),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
         ),
         _buildActionCard(
           context,

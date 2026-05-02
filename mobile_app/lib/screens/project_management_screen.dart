@@ -6,7 +6,8 @@ import '../services/api_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ProjectManagementScreen extends StatefulWidget {
-  const ProjectManagementScreen({super.key});
+  final User user;
+  const ProjectManagementScreen({super.key, required this.user});
 
   @override
   State<ProjectManagementScreen> createState() => _ProjectManagementScreenState();
@@ -44,7 +45,10 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
               if (nameController.text.isNotEmpty) {
                 try {
                   // Create on backend first to get a valid UUID
-                  final createdProject = await ApiService().createProject(nameController.text);
+                  final createdProject = await ApiService().createProject(
+                    nameController.text,
+                    widget.user.id,
+                  );
                   _projectBox.add(createdProject);
                   if (mounted) setState(() {});
                   Navigator.pop(context);
