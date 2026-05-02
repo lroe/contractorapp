@@ -190,3 +190,16 @@ class MaterialUsage(Base):
     logged_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     usage_date = Column(Date, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
+    type = Column(String)  # INCOME or EXPENSE
+    category = Column(String)  # Materials, Wages, Fuel, Transport, Food, Other
+    amount = Column(Numeric(10, 2))
+    remarks = Column(Text, nullable=True)
+    receipt_url = Column(String, nullable=True)
+    transaction_date = Column(Date, default=datetime.utcnow)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)

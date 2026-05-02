@@ -199,3 +199,21 @@ class MaterialUsage(MaterialUsageBase):
     created_at: datetime
     class Config:
         from_attributes = True
+
+class TransactionBase(BaseModel):
+    project_id: UUID
+    type: str
+    category: str
+    amount: Decimal
+    remarks: Optional[str] = None
+    transaction_date: Optional[date] = None
+
+class TransactionCreate(TransactionBase):
+    created_by: UUID
+
+class Transaction(TransactionBase):
+    id: UUID
+    receipt_url: Optional[str] = None
+    created_at: datetime
+    class Config:
+        from_attributes = True

@@ -176,3 +176,14 @@ def log_material_usage(db: Session, usage: schemas.MaterialUsageCreate):
     db.commit()
     db.refresh(db_usage)
     return db_usage
+
+# Transactions
+def create_transaction(db: Session, transaction: schemas.TransactionCreate):
+    db_transaction = models.Transaction(**transaction.dict())
+    db.add(db_transaction)
+    db.commit()
+    db.refresh(db_transaction)
+    return db_transaction
+
+def get_project_transactions(db: Session, project_id: uuid.UUID):
+    return db.query(models.Transaction).filter(models.Transaction.project_id == project_id).order_by(models.Transaction.transaction_date.desc()).all()

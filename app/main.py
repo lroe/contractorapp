@@ -312,3 +312,12 @@ def log_material_usage(usage: schemas.MaterialUsageCreate, db: Session = Depends
 @app.get("/projects/{project_id}/material-usage/", response_model=List[schemas.MaterialUsage])
 def read_material_usage(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return db.query(models.MaterialUsage).filter(models.MaterialUsage.project_id == project_id).all()
+
+# Transactions
+@app.post("/transactions/", response_model=schemas.Transaction)
+def create_transaction(transaction: schemas.TransactionCreate, db: Session = Depends(get_db)):
+    return crud.create_transaction(db, transaction)
+
+@app.get("/projects/{project_id}/transactions/", response_model=List[schemas.Transaction])
+def read_transactions(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_project_transactions(db, project_id)

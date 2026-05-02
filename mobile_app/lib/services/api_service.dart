@@ -307,4 +307,20 @@ class ApiService {
     );
     if (response.statusCode != 200) throw Exception('Failed to log material usage');
   }
+
+  // Bookkeeping
+  Future<List<dynamic>> getTransactions(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/transactions/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load transactions');
+  }
+
+  Future<void> createTransaction(Map<String, dynamic> txData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/transactions/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(txData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to create transaction');
+  }
 }

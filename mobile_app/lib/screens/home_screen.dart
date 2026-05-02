@@ -6,6 +6,7 @@ import 'project_management_screen.dart';
 import 'tasks_screen.dart';
 import 'report_detail_screen.dart';
 import 'inventory_screen.dart';
+import 'finance_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
@@ -299,6 +300,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        _buildActionCard(
+          context,
+          'Finance',
+          Icons.account_balance_wallet_outlined,
+          const Color(0xFF6366F1),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FinanceScreen(project: project, user: _currentUser!)),
+                ),
+              ),
+            ),
+          ),
+        ),
       ] : [
         _buildActionCard(
           context,
@@ -357,6 +375,19 @@ class _HomeScreenState extends State<HomeScreen> {
               return;
             }
             Navigator.push(context, MaterialPageRoute(builder: (context) => InventoryScreen(project: _selectedProject!, user: _currentUser!)));
+          },
+        ),
+        _buildActionCard(
+          context,
+          'Finance',
+          Icons.account_balance_wallet_outlined,
+          const Color(0xFF6366F1),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => FinanceScreen(project: _selectedProject!, user: _currentUser!)));
           },
         ),
       ],
