@@ -479,6 +479,7 @@ class TaskDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 itemCount: reports.length,
                 itemBuilder: (context, i) {
+                  final report = reports[i] as Map<String, dynamic>;
                   final media = report['media'] as List<dynamic>? ?? [];
                   final hasMedia = media.isNotEmpty;
                   return GestureDetector(

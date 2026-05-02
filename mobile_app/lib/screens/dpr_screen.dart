@@ -333,6 +333,7 @@ class ReportsListScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             itemCount: reports.length,
             itemBuilder: (context, index) {
+              final report = reports[index] as Map<String, dynamic>;
               final media = report['media'] as List<dynamic>? ?? [];
               final hasMedia = media.isNotEmpty;
               final hasLinkedTask = report['linked_task_id'] != null;
