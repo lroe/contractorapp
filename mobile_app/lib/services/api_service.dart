@@ -21,6 +21,15 @@ class ApiService {
     }
   }
 
+  Future<List<dynamic>> getRecentActivity({String? projectId}) async {
+    final url = projectId != null 
+        ? '$baseUrl/recent-activity/?project_id=$projectId'
+        : '$baseUrl/recent-activity/';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load recent activity');
+  }
+
   Future<Project> createProject(String name, String ownerId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/projects/'),

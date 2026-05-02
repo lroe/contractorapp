@@ -163,6 +163,76 @@ def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
 def get_recent_dpr(limit: int = 5, db: Session = Depends(get_db)):
     return db.query(models.DPREntry).order_by(models.DPREntry.created_at.desc()).limit(limit).all()
 
+@app.get("/recent-activity/")
+def get_recent_activity(project_id: Optional[uuid.UUID] = None, limit: int = 15, db: Session = Depends(get_db)):
+    # Fetch DPRs
+    dpr_query = db.query(models.DPREntry)
+    if project_id:
+        dpr_query = dpr_query.filter(models.DPREntry.project_id == project_id)
+    dprs = dpr_query.order_by(models.DPREntry.created_at.desc()).limit(limit).all()
+    
+    # Fetch Material Requests
+    mr_query = db.query(models.MaterialRequest)
+    if project_id:
+        mr_query = mr_query.filter(models.MaterialRequest.project_id == project_id)
+    mrs = mr_query.order_by(models.MaterialRequest.created_at.desc()).limit(limit).all()
+    
+    # Fetch Recent Attendance
+    att_query = db.query(models.Attendance)
+    if project_id:
+        att_query = att_query.filter(models.Attendance.project_id == project_id)
+    atts = att_query.order_by(models.Attendance.created_at.desc()).limit(limit).all()
+    
+    activity = []
+    for d in dprs:
+        activity.append({
+            "type": "dpr",
+            "timestamp": d.created_at,
+            "data": {
+                "id": str(d.id),
+                "project_id": str(d.project_id),
+                "entry_date": d.entry_date.isoformat(),
+                "remarks": d.remarks,
+                "media": [{"media_url": m.media_url} for m in d.media]
+            }
+        })
+    
+    for m in mrs:
+        material = db.query(models.Material).filter(models.Material.id == m.material_id).first()
+        project = db.query(models.Project).filter(models.Project.id == m.project_id).first()
+        activity.append({
+            "type": "material_request",
+            "timestamp": m.created_at,
+            "data": {
+                "id": str(m.id),
+                "project_id": str(m.project_id),
+                "project_name": project.name if project else "Project",
+                "material_name": material.name if material else "Material",
+                "quantity": float(m.quantity),
+                "unit": material.unit if material else "",
+                "status": m.status,
+                "created_at": m.created_at.isoformat()
+            }
+        })
+        
+    for a in atts:
+        project = db.query(models.Project).filter(models.Project.id == a.project_id).first()
+        worker = db.query(models.Worker).filter(models.Worker.id == a.worker_id).first()
+        activity.append({
+            "type": "attendance",
+            "timestamp": a.created_at,
+            "data": {
+                "id": str(a.id),
+                "project_name": project.name if project else "Project",
+                "worker_name": worker.name if worker else "Worker",
+                "status": a.status,
+                "entry_date": a.entry_date.isoformat()
+            }
+        })
+        
+    activity.sort(key=lambda x: x["timestamp"], reverse=True)
+    return activity[:limit]
+
 # Work Types
 @app.get("/work-types/", response_model=List[schemas.WorkType])
 def list_work_types(db: Session = Depends(get_db)):

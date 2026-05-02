@@ -397,14 +397,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         FutureBuilder<List<dynamic>>(
-          future: projectId != null ? _apiService.getProjectDPRs(projectId) : _apiService.getRecentReports(),
+          future: _apiService.getRecentActivity(projectId: projectId),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-            final reports = snapshot.data ?? [];
-            if (reports.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No recent reports.')));
-
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+            }
+            final activities = snapshot.data ?? [];
+            if (activities.isEmpty) {
+              return const Center(child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text('No activity yet.', style: TextStyle(color: Color(0xFF94A3B8))),
+              ));
+            }
             return Column(
-              children: reports.take(3).map((report) => _buildActivityTile(report)).toList(),
+              children: activities.map((activity) => _buildActivityTile(activity)).toList(),
             );
           },
         ),
@@ -412,8 +421,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActivityTile(dynamic report) {
-    final hasLinkedTask = report['linked_task_id'] != null;
+  Widget _buildActivityTile(dynamic activity) {
+    final type = activity['type'];
+    final data = activity['data'];
+    
+    switch(type) {
+      case 'dpr': return _buildDPRTile(data);
+      case 'material_request': return _buildMaterialRequestTile(data);
+      case 'attendance': return _buildAttendanceTile(data);
+      default: return const SizedBox();
+    }
+  }
+
+  Widget _buildDPRTile(dynamic report) {
     final media = report['media'] as List<dynamic>? ?? [];
     final hasMedia = media.isNotEmpty;
 
@@ -425,22 +445,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
+        decoration: _tileDecoration(),
         child: Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: hasMedia
+            _tileIcon(
+              hasMedia
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
@@ -456,33 +465,97 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    Flexible(
-                      child: Text(
-                        report['remarks']?.isNotEmpty == true ? report['remarks'] : 'Report Submitted',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    if (hasLinkedTask) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                        child: const Text('linked', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ]),
-                  const SizedBox(height: 3),
-                  Text('📅 ${report['entry_date']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                  Text('New Site Report', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(report['remarks'] ?? 'No remarks provided.', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text('📅 ${report['entry_date']}', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMaterialRequestTile(dynamic req) {
+    final status = req['status'];
+    Color statusColor = status == 'pending' ? Colors.orange : (status == 'approved' ? Colors.blue : Colors.green);
+    
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => InventoryScreen(project: _selectedProject!, user: _currentUser!)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: _tileDecoration(),
+        child: Row(
+          children: [
+            _tileIcon(Icon(Icons.shopping_cart_outlined, color: statusColor)),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${req['material_name']} Requested', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('${req['quantity']} ${req['unit']} for ${req['project_name']}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                    child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttendanceTile(dynamic att) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: _tileDecoration(),
+      child: Row(
+        children: [
+          _tileIcon(const Icon(Icons.person_pin_outlined, color: Color(0xFF10B981))),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Attendance Marked', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('${att['worker_name']} was ${att['status']} at ${att['project_name']}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                const SizedBox(height: 4),
+                Text('📅 ${att['entry_date']}', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _tileDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFF1F5F9)),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+    );
+  }
+
+  Widget _tileIcon(Widget child) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+      child: Center(child: child),
     );
   }
 
