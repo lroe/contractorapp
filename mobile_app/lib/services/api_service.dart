@@ -64,7 +64,16 @@ class ApiService {
       body: jsonEncode(dprData),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to submit DPR');
+      throw Exception('Failed to submit DPR: ${response.body}');
+    }
+  }
+
+  Future<List<dynamic>> getProjectDPRs(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/dpr/'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load project reports');
     }
   }
 

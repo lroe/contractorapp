@@ -103,7 +103,7 @@ class DPREntryBase(BaseModel):
     block_id: Optional[UUID] = None
     floor_id: Optional[UUID] = None
     area_id: Optional[UUID] = None
-    quantity: Decimal
+    quantity: Optional[Decimal] = 0
     remarks: Optional[str] = None
     linked_task_id: Optional[UUID] = None
 

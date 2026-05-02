@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../services/api_service.dart';
+import '../models/models.dart';
 
 class DPRScreen extends StatefulWidget {
-  const DPRScreen({super.key});
+  final Project project;
+  final User user;
+  const DPRScreen({super.key, required this.project, required this.user});
 
   @override
   State<DPRScreen> createState() => _DPRScreenState();
@@ -14,7 +12,9 @@ class DPRScreen extends StatefulWidget {
 class _DPRScreenState extends State<DPRScreen> {
   final List<XFile> _mediaFiles = [];
   final ImagePicker _picker = ImagePicker();
-  final _quantityController = TextEditingController();
+  final _remarksController = TextEditingController();
+  bool _isLoading = false;
+  final ApiService _apiService = ApiService();
 
   Future<void> _pickMedia() async {
     final List<XFile> selectedImages = await _picker.pickMultiImage();
@@ -25,37 +25,41 @@ class _DPRScreenState extends State<DPRScreen> {
     }
   }
 
-  bool _isLoading = false;
-  final ApiService _apiService = ApiService();
-
   Future<void> _submitReport() async {
-    if (_quantityController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter quantity')));
+    if (_remarksController.text.isEmpty && _mediaFiles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add remarks or a photo')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // 1. Create DPR Entry (IDs are placeholders, in a real app these come from selection)
-      // dprData would match schemas.DPREntryCreate
-      // For demo, we'll just show the flow
+      final dprData = {
+        "project_id": widget.project.id,
+        "supervisor_id": widget.user.id,
+        "entry_date": DateTime.now().toIso8601String().split('T')[0],
+        "work_type_id": "00000000-0000-0000-0000-000000000000", // Default or select from list
+        "quantity": 0,
+        "remarks": _remarksController.text,
+      };
+
+      await _apiService.submitDPR(dprData);
       
-      // await _apiService.submitDPR({...}); 
-      // await _apiService.uploadMedia(dprId, _mediaFiles.map((e) => e.path).toList());
-
-      await Future.delayed(const Duration(seconds: 2)); // Simulate network
-
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('DPR Submitted Successfully!')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report Submitted Successfully!')));
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _viewReports() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ReportsListScreen(project: widget.project)),
+    );
   }
 
   @override
@@ -65,8 +69,9 @@ class _DPRScreenState extends State<DPRScreen> {
       appBar: AppBar(
         title: Text('Daily Progress', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
+        actions: [
+          IconButton(onPressed: _viewReports, icon: const Icon(Icons.history)),
+        ],
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
@@ -77,13 +82,9 @@ class _DPRScreenState extends State<DPRScreen> {
               children: [
                 _buildInfoCard(),
                 const SizedBox(height: 32),
-                _buildInputLabel('Work Quantity (sqft)'),
+                _buildInputLabel('Update / Remarks'),
                 const SizedBox(height: 8),
-                _buildTextField(_quantityController, 'Enter quantity', TextInputType.number),
-                const SizedBox(height: 24),
-                _buildInputLabel('Remarks'),
-                const SizedBox(height: 8),
-                _buildTextField(null, 'Add any specific notes...', TextInputType.multiline, maxLines: 3),
+                _buildTextField(_remarksController, 'What happened on site today?', TextInputType.multiline, maxLines: 5),
                 const SizedBox(height: 32),
                 _buildMediaSection(),
                 const SizedBox(height: 48),
@@ -101,15 +102,15 @@ class _DPRScreenState extends State<DPRScreen> {
         color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.location_on, color: Color(0xFF3B82F6)),
-          SizedBox(width: 12),
+          const Icon(Icons.location_on, color: Color(0xFF3B82F6)),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Project Alpha • Block A', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Floor 2 • Area: Living Room', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+              Text('Project: ${widget.project.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Site Reporting Mode', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
             ],
           ),
         ],
@@ -118,14 +119,7 @@ class _DPRScreenState extends State<DPRScreen> {
   }
 
   Widget _buildInputLabel(String label) {
-    return Text(
-      label,
-      style: GoogleFonts.outfit(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF1E293B),
-      ),
-    );
+    return Text(label, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)));
   }
 
   Widget _buildTextField(TextEditingController? controller, String hint, TextInputType type, {int maxLines = 1}) {
@@ -135,14 +129,9 @@ class _DPRScreenState extends State<DPRScreen> {
       maxLines: maxLines,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }
@@ -154,65 +143,40 @@ class _DPRScreenState extends State<DPRScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildInputLabel('Photos & Videos'),
-            TextButton.icon(
-              onPressed: _pickMedia,
-              icon: const Icon(Icons.add_a_photo_outlined, size: 20),
-              label: const Text('Add'),
-            ),
+            _buildInputLabel('Site Photos'),
+            TextButton.icon(onPressed: _pickMedia, icon: const Icon(Icons.add_a_photo_outlined), label: const Text('Add')),
           ],
         ),
         const SizedBox(height: 8),
         if (_mediaFiles.isEmpty)
-          Container(
-            height: 100,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
-            ),
-            child: const Center(
-              child: Text('No media selected', style: TextStyle(color: Color(0xFF94A3B8))),
-            ),
-          )
+          _buildEmptyMediaBox()
         else
-          SizedBox(
-            height: 100,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _mediaFiles.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                return Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(_mediaFiles[index].path),
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: GestureDetector(
-                        onTap: () => setState(() => _mediaFiles.removeAt(index)),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                          child: const Icon(Icons.close, color: Colors.white, size: 14),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
+          _buildMediaList(),
       ],
+    );
+  }
+
+  Widget _buildEmptyMediaBox() {
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0))),
+      child: const Center(child: Text('No photos added', style: TextStyle(color: Color(0xFF94A3B8)))),
+    );
+  }
+
+  Widget _buildMediaList() {
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _mediaFiles.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(File(_mediaFiles[index].path), width: 120, height: 120, fit: BoxFit.cover),
+        ),
+      ),
     );
   }
 
@@ -222,18 +186,57 @@ class _DPRScreenState extends State<DPRScreen> {
       height: 56,
       child: ElevatedButton(
         onPressed: _submitReport,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1E293B),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 0,
-        ),
-        child: Text(
-          'Submit Report',
-          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+        child: Text('Submit Report', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+}
+
+class ReportsListScreen extends StatelessWidget {
+  final Project project;
+  const ReportsListScreen({super.key, required this.project});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Project Reports: ${project.name}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
+      body: FutureBuilder<List<dynamic>>(
+        future: ApiService().getProjectDPRs(project.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+          final reports = snapshot.data ?? [];
+          if (reports.isEmpty) return const Center(child: Text('No reports found for this project.'));
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: reports.length,
+            itemBuilder: (context, index) {
+              final report = reports[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Date: ${report['entry_date']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(report['remarks'] ?? 'No remarks', style: const TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

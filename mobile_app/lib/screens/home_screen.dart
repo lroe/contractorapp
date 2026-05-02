@@ -237,32 +237,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         _buildActionCard(
           context,
-          'Supervisors',
-          Icons.person_search,
-          const Color(0xFF3B82F6),
-          () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
+          'DPR Entry',
+          Icons.edit_document,
+          const Color(0xFF1E293B),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => DPRScreen(project: _selectedProject!, user: _currentUser!)));
+          },
         ),
         _buildActionCard(
           context,
           'Reports',
-          Icons.bar_chart,
-          const Color(0xFFF59E0B),
-          () {},
-        ),
-        _buildActionCard(
-          context,
-          'Settings',
-          Icons.settings,
-          const Color(0xFF64748B),
-          () {},
-        ),
-      ] : [
-        _buildActionCard(
-          context,
-          'DPR Entry',
-          Icons.edit_document,
+          Icons.insights,
           const Color(0xFF3B82F6),
-          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DPRScreen())),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsListScreen(project: _selectedProject!)));
+          },
         ),
         _buildActionCard(
           context,
@@ -271,12 +268,37 @@ class _HomeScreenState extends State<HomeScreen> {
           const Color(0xFF10B981),
           () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceScreen())),
         ),
+      ] : [
         _buildActionCard(
           context,
-          'Inventory',
-          Icons.inventory_2,
-          const Color(0xFFF59E0B),
-          () {},
+          'Create Project',
+          Icons.add_business,
+          const Color(0xFF1E293B),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
+        ),
+        _buildActionCard(
+          context,
+          'Supervisors',
+          Icons.person_search,
+          const Color(0xFF3B82F6),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
+        ),
+        _buildActionCard(
+          context,
+          'View Reports',
+          Icons.assessment,
+          const Color(0xFF10B981),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ReportsListScreen(project: project)),
+                ),
+              ),
+            ),
+          ),
         ),
         _buildActionCard(
           context,

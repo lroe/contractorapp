@@ -142,3 +142,7 @@ def get_user_projects(user_id: uuid.UUID, db: Session = Depends(get_db)):
     return db.query(models.Project).join(models.ProjectUser).filter(
         models.ProjectUser.user_id == user_id
     ).all()
+
+@app.get("/projects/{project_id}/dpr/")
+def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.DPREntry).filter(models.DPREntry.project_id == project_id).all()

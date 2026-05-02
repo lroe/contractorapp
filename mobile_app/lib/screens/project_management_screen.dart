@@ -6,8 +6,9 @@ import '../services/api_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ProjectManagementScreen extends StatefulWidget {
-  final User user;
-  const ProjectManagementScreen({super.key, required this.user});
+  final User? user; // Null if just viewing projects
+  final Function(Project)? onProjectTap;
+  const ProjectManagementScreen({super.key, this.user, this.onProjectTap});
 
   @override
   State<ProjectManagementScreen> createState() => _ProjectManagementScreenState();
@@ -140,7 +141,11 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
           ],
         ),
         onTap: () {
-          // Navigate to assign supervisor
+          if (widget.onProjectTap != null) {
+            widget.onProjectTap!(project);
+            return;
+          }
+          // Default: Navigate to assign supervisor
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => AssignSupervisorScreen(project: project)),
