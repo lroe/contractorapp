@@ -70,8 +70,14 @@ class _DPRScreenState extends State<DPRScreen> {
         "linked_task_id": _selectedTaskId,
       };
 
-      await _apiService.submitDPR(dprData);
-      
+      final dprResponse = await _apiService.submitDPR(dprData);
+
+      // Upload images if any were selected
+      if (_mediaFiles.isNotEmpty) {
+        final dprId = dprResponse['id'].toString();
+        await _apiService.uploadDPRMedia(dprId, _mediaFiles);
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report Submitted Successfully!')));
       Navigator.pop(context);

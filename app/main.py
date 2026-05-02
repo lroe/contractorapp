@@ -1,7 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List
 import uuid
+import os
+import shutil
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine, get_db
@@ -12,6 +15,10 @@ from fastapi.middleware.cors import CORSMiddleware
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Contractor DB API")
+
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # CORS
 app.add_middleware(
@@ -55,26 +62,31 @@ def create_dpr_entry(dpr: schemas.DPREntryCreate, db: Session = Depends(get_db))
 # Multi-media Upload for DPR
 @app.post("/dpr/{dpr_id}/media/")
 async def upload_dpr_media(
-    dpr_id: uuid.UUID, 
-    files: List[UploadFile] = File(...), 
+    dpr_id: uuid.UUID,
+    files: List[UploadFile] = File(...),
     db: Session = Depends(get_db)
 ):
-    # This is a placeholder for file storage logic (e.g. S3 or local disk)
-    # For now, we'll just save the names to the DB
+    upload_dir = f"uploads/dpr/{dpr_id}"
+    os.makedirs(upload_dir, exist_ok=True)
     media_records = []
     for file in files:
-        # In a real app: save file to storage, get URL
-        file_url = f"/media/{dpr_id}/{file.filename}"
-        media_type = "video" if file.content_type.startswith("video") else "photo"
-        
+        safe_name = file.filename.replace(" ", "_")
+        file_path = f"{upload_dir}/{safe_name}"
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        file_url = f"/uploads/dpr/{dpr_id}/{safe_name}"
+        media_type = "video" if (file.content_type or "").startswith("video") else "photo"
         db_media = crud.add_dpr_media(db, schemas.DPRMediaCreate(
             dpr_entry_id=dpr_id,
             media_url=file_url,
             media_type=media_type
         ))
-        media_records.append(db_media)
-    
+        media_records.append({"id": str(db_media.id), "media_url": db_media.media_url, "media_type": db_media.media_type})
     return {"message": f"Uploaded {len(files)} files", "media": media_records}
+
+@app.get("/dpr/{dpr_id}/media/")
+def get_dpr_media(dpr_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.DPRMedia).filter(models.DPRMedia.dpr_entry_id == dpr_id).all()
 
 # Gangs
 @app.post("/gangs/")

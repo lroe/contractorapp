@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 
 class ApiService {
@@ -207,6 +209,36 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to load task reports');
+    }
+  }
+
+  Future<void> uploadDPRMedia(String dprId, List<XFile> files) async {
+    if (files.isEmpty) return;
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/dpr/$dprId/media/'));
+    for (final xfile in files) {
+      final file = File(xfile.path);
+      final stream = http.ByteStream(file.openRead());
+      final length = await file.length();
+      final filename = xfile.name.isEmpty ? xfile.path.split('/').last : xfile.name;
+      request.files.add(http.MultipartFile(
+        'files',
+        stream,
+        length,
+        filename: filename,
+      ));
+    }
+    final response = await request.send();
+    if (response.statusCode != 200) {
+      throw Exception('Failed to upload media (status ${response.statusCode})');
+    }
+  }
+
+  Future<List<dynamic>> getDPRMedia(String dprId) async {
+    final response = await http.get(Uri.parse('$baseUrl/dpr/$dprId/media/'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load media');
     }
   }
 }

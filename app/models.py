@@ -124,6 +124,7 @@ class DPREntry(Base):
     remarks = Column(Text)
     linked_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    media = relationship("DPRMedia", backref="entry", cascade="all, delete-orphan", lazy="joined")
 
 class DPRMedia(Base):
     __tablename__ = "dpr_media"
