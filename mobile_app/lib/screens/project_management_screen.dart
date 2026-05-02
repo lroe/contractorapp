@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import 'package:uuid/uuid.dart';
 
 class ProjectManagementScreen extends StatefulWidget {
   const ProjectManagementScreen({super.key});
@@ -39,16 +40,19 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isNotEmpty) {
-                final newProject = Project(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: nameController.text,
-                  status: 'active',
-                );
-                _projectBox.add(newProject);
-                setState(() {});
-                Navigator.pop(context);
+                try {
+                  // Create on backend first to get a valid UUID
+                  final createdProject = await ApiService().createProject(nameController.text);
+                  _projectBox.add(createdProject);
+                  if (mounted) setState(() {});
+                  Navigator.pop(context);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to sync project with backend: $e')),
+                  );
+                }
               }
             },
             child: const Text('Create'),
@@ -118,7 +122,19 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
         contentPadding: const EdgeInsets.all(20),
         title: Text(project.name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
         subtitle: Text('Status: ${project.status}', style: const TextStyle(color: Colors.green)),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: () {
+                project.delete();
+                setState(() {});
+              },
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
         onTap: () {
           // Navigate to assign supervisor
           Navigator.push(

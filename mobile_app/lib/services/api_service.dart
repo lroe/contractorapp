@@ -19,6 +19,20 @@ class ApiService {
     }
   }
 
+  Future<Project> createProject(String name) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/projects/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"name": name, "status": "active"}),
+    );
+
+    if (response.statusCode == 200) {
+      return Project.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create project: ${response.body}');
+    }
+  }
+
   Future<List<Project>> getProjects() async {
     final response = await http.get(Uri.parse('$baseUrl/projects/'));
     if (response.statusCode == 200) {
