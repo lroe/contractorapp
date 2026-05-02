@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 
@@ -18,6 +19,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   List<dynamic> _inventory = [];
   List<dynamic> _requests = [];
   List<dynamic> _materials = [];
+  Set<String> _seenRequestIds = {};
   bool _isLoading = true;
 
   bool get isOwner => widget.user.role == 'owner';
@@ -26,11 +28,21 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabSelection);
     _loadData();
+  }
+
+  void _handleTabSelection() {
+    if (_tabController.index == 1) {
+      _markAllVisibleAsSeen();
+    }
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    final prefs = await SharedPreferences.getInstance();
+    _seenRequestIds = (prefs.getStringList('seen_material_request_ids') ?? []).toSet();
+
     try {
       final results = await Future.wait([
         _apiService.getProjectInventory(widget.project.id),
@@ -47,6 +59,15 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       setState(() => _isLoading = false);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  Future<void> _markAllVisibleAsSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (var req in _requests) {
+      _seenRequestIds.add(req['id'].toString());
+    }
+    await prefs.setStringList('seen_material_request_ids', _seenRequestIds.toList());
+    if (mounted) setState(() {});
   }
 
   void _showRequestDialog() {
@@ -201,7 +222,24 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           labelColor: const Color(0xFF3B82F6),
           unselectedLabelColor: const Color(0xFF64748B),
           indicatorColor: const Color(0xFF3B82F6),
-          tabs: const [Tab(text: 'Current Stock'), Tab(text: 'Requests')],
+          tabs: [
+            const Tab(text: 'Current Stock'),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Requests'),
+                  if (_requests.any((r) => !_seenRequestIds.contains(r['id'].toString())))
+                    Container(
+                      margin: const EdgeInsets.only(left: 6),
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       body: _isLoading
@@ -254,7 +292,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               Text('Current Balance', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
             ])),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$qty', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: qty < 10 ? Colors.red : Colors.black)),
+              Text('$qty', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: (double.tryParse(qty.toString()) ?? 0) < 10 ? Colors.red : Colors.black)),
               Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
             ]),
           ]),
@@ -297,6 +335,13 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(width: 8),
+              if (!_seenRequestIds.contains(req['id'].toString()))
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                  child: const Text('NEW', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
