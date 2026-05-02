@@ -34,6 +34,10 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Phone already registered")
     return crud.create_user(db=db, user=user)
 
+@app.get("/supervisors/", response_model=List[schemas.User])
+def list_supervisors(db: Session = Depends(get_db)):
+    return db.query(models.User).filter(models.User.role == 'supervisor').all()
+
 # Projects
 @app.post("/projects/", response_model=schemas.Project)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):

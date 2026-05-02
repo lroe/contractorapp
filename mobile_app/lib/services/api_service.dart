@@ -104,4 +104,24 @@ class ApiService {
       throw Exception('Failed to mark attendance');
     }
   }
+
+  // Supervisors
+  Future<List<User>> getSupervisors() async {
+    final response = await http.get(Uri.parse('$baseUrl/supervisors/'));
+    if (response.statusCode == 200) {
+      Iterable l = json.decode(response.body);
+      return List<User>.from(l.map((model) => User.fromJson(model)));
+    } else {
+      throw Exception('Failed to load supervisors');
+    }
+  }
+
+  Future<void> assignSupervisor(String projectId, String userId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/projects/$projectId/assign/?user_id=$userId'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to assign supervisor: ${response.body}');
+    }
+  }
 }

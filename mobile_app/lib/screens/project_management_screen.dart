@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 
 class ProjectManagementScreen extends StatefulWidget {
   const ProjectManagementScreen({super.key});
@@ -130,9 +131,50 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
   }
 }
 
-class AssignSupervisorScreen extends StatelessWidget {
+class AssignSupervisorScreen extends StatefulWidget {
   final Project project;
   const AssignSupervisorScreen({super.key, required this.project});
+
+  @override
+  State<AssignSupervisorScreen> createState() => _AssignSupervisorScreenState();
+}
+
+class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
+  final ApiService _apiService = ApiService();
+  List<User> _supervisors = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSupervisors();
+  }
+
+  Future<void> _loadSupervisors() async {
+    try {
+      final supervisors = await _apiService.getSupervisors();
+      setState(() {
+        _supervisors = supervisors;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _assignSupervisor(User supervisor) async {
+    try {
+      await _apiService.assignSupervisor(widget.project.id, supervisor.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Assigned ${supervisor.name} to ${widget.project.name}')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error assigning supervisor: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,17 +187,22 @@ class AssignSupervisorScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Project: ${project.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Project: ${widget.project.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             const Text('Available Supervisors', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView(
-                children: [
-                  _buildSupervisorTile('Jeevan Kumar', 'Supervisor'),
-                  _buildSupervisorTile('Akku Singh', 'Supervisor'),
-                ],
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _supervisors.isEmpty
+                      ? const Center(child: Text('No supervisors found.'))
+                      : ListView.builder(
+                          itemCount: _supervisors.length,
+                          itemBuilder: (context, index) {
+                            final supervisor = _supervisors[index];
+                            return _buildSupervisorTile(supervisor);
+                          },
+                        ),
             ),
           ],
         ),
@@ -163,7 +210,7 @@ class AssignSupervisorScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSupervisorTile(String name, String role) {
+  Widget _buildSupervisorTile(User supervisor) {
     return Card(
       elevation: 0,
       color: Colors.white,
@@ -174,10 +221,10 @@ class AssignSupervisorScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.person)),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(role),
+        title: Text(supervisor.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('Role: ${supervisor.role} • ${supervisor.phone}'),
         trailing: ElevatedButton(
-          onPressed: () {},
+          onPressed: () => _assignSupervisor(supervisor),
           child: const Text('Assign'),
         ),
       ),
