@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dpr_screen.dart';
 import 'attendance_screen.dart';
 import 'project_management_screen.dart';
+import 'tasks_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
@@ -262,6 +263,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        _buildActionCard(
+          context,
+          'Tasks',
+          Icons.task_alt,
+          const Color(0xFFF59E0B),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TasksScreen(project: project, user: _currentUser!)),
+                ),
+              ),
+            ),
+          ),
+        ),
       ] : [
         _buildActionCard(
           context,
@@ -295,6 +313,19 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.people_alt,
           const Color(0xFF10B981),
           () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceScreen())),
+        ),
+        _buildActionCard(
+          context,
+          'Tasks',
+          Icons.task_alt,
+          const Color(0xFFF59E0B),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => TasksScreen(project: _selectedProject!, user: _currentUser!)));
+          },
         ),
       ],
     );

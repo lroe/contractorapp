@@ -150,3 +150,41 @@ def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
 @app.get("/dpr/recent/")
 def get_recent_dpr(limit: int = 5, db: Session = Depends(get_db)):
     return db.query(models.DPREntry).order_by(models.DPREntry.created_at.desc()).limit(limit).all()
+
+# Work Types
+@app.get("/work-types/", response_model=List[schemas.WorkType])
+def list_work_types(db: Session = Depends(get_db)):
+    return db.query(models.WorkType).all()
+
+@app.post("/work-types/", response_model=schemas.WorkType)
+def create_work_type(wt: schemas.WorkTypeCreate, db: Session = Depends(get_db)):
+    db_wt = models.WorkType(**wt.dict())
+    db.add(db_wt)
+    db.commit()
+    db.refresh(db_wt)
+    return db_wt
+
+# Tasks
+@app.post("/projects/{project_id}/tasks/", response_model=schemas.Task)
+def create_task(project_id: uuid.UUID, task: schemas.TaskCreate, db: Session = Depends(get_db)):
+    db_task = models.Task(**task.dict())
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+@app.get("/projects/{project_id}/tasks/", response_model=List[schemas.Task])
+def get_project_tasks(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.Task).filter(models.Task.project_id == project_id).order_by(models.Task.created_at.desc()).all()
+
+@app.patch("/tasks/{task_id}/status/")
+def update_task_status(task_id: uuid.UUID, status: str, db: Session = Depends(get_db)):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if status not in ['pending', 'in_progress', 'completed']:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    task.status = status
+    db.commit()
+    db.refresh(task)
+    return task

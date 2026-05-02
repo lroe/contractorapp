@@ -160,4 +160,44 @@ class ApiService {
       throw Exception('Failed to load recent reports');
     }
   }
+
+  Future<List<dynamic>> getWorkTypes() async {
+    final response = await http.get(Uri.parse('$baseUrl/work-types/'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load work types');
+    }
+  }
+
+  Future<List<dynamic>> getProjectTasks(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/tasks/'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load tasks');
+    }
+  }
+
+  Future<Map<String, dynamic>> createTask(Map<String, dynamic> taskData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/projects/${taskData['project_id']}/tasks/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(taskData),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to create task: ${response.body}');
+    }
+  }
+
+  Future<void> updateTaskStatus(String taskId, String status) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/tasks/$taskId/status/?status=$status'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update task status: ${response.body}');
+    }
+  }
 }
