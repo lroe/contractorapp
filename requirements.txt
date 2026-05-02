@@ -6,3 +6,4 @@ python-dotenv
 pydantic[email]
 python-multipart
 alembic
+passlib[bcrypt]

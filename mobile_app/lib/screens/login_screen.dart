@@ -11,47 +11,82 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _apiService = ApiService();
   bool _isLoading = false;
 
-  Future<void> _handleLogin(String role) async {
-    // For sample login, we'll just mock it or use the backend if a user exists
-    // But since it's a sample, let's just navigate based on the button pressed
-    
-    Navigator.pushReplacementNamed(context, '/home', arguments: role);
+  Future<void> _handleLogin() async {
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter phone and password')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await _apiService.login(_phoneController.text, _passwordController.text);
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/home', arguments: user.role);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Contractor DB',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Contractor DB',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Select your role to continue',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF64748B)),
-            ),
-            const SizedBox(height: 48),
-            _buildLoginButton('Login as Owner', const Color(0xFF1E293B), () => _handleLogin('owner')),
-            const SizedBox(height: 16),
-            _buildLoginButton('Login as Supervisor', const Color(0xFF3B82F6), () => _handleLogin('supervisor')),
-          ],
+              const SizedBox(height: 48),
+              _buildTextField(_phoneController, 'Phone Number', Icons.phone, TextInputType.phone),
+              const SizedBox(height: 16),
+              _buildTextField(_passwordController, 'Password', Icons.lock, TextInputType.text, isObscure: true),
+              const SizedBox(height: 32),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildLoginButton('Login', const Color(0xFF1E293B), _handleLogin),
+              const SizedBox(height: 24),
+              const Text(
+                'Sample Credentials:\nOwner: 1234567890 / pass123\nSup 1: 1111111111 / pass123',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, TextInputType type, {bool isObscure = false}) {
+    return TextField(
+      controller: controller,
+      keyboardType: type,
+      obscureText: isObscure,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, color: const Color(0xFF64748B)),
+        filled: true,
+        fillColor: const Color(0xFFF8FAFC),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
     );
   }

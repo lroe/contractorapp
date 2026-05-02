@@ -107,13 +107,22 @@ def mark_attendance(attendance: schemas.AttendanceCreate, db: Session = Depends(
         attendance.marked_by
     )
 
-# Mock Login
+import bcrypt
+
+def verify_password(plain_password, hashed_password):
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+# Login
 @app.post("/login/")
-def login(phone: str, db: Session = Depends(get_db)):
+def login(phone: str, password: str, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_phone(db, phone=phone)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": db_user.id, "name": db_user.name, "role": db_user.role}
+    
+    if not verify_password(password, db_user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+        
+    return {"id": db_user.id, "name": db_user.name, "role": db_user.role, "phone": db_user.phone}
 
 # Project Assignment
 @app.post("/projects/{project_id}/assign/")

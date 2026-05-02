@@ -19,11 +19,11 @@ class User extends HiveObject {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      name: json['name'],
-      phone: json['phone'],
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      phone: json['phone'] ?? '',
       email: json['email'],
-      role: json['role'],
+      role: json['role'] ?? 'supervisor',
     );
   }
 }

@@ -7,6 +7,18 @@ class ApiService {
   // Use localhost for iOS Simulator or Desktop
   static const String baseUrl = 'http://localhost:8000'; 
 
+  Future<User> login(String phone, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/login/?phone=$phone&password=$password'),
+    );
+
+    if (response.statusCode == 200) {
+      return User.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to login: ${response.body}');
+    }
+  }
+
   Future<List<Project>> getProjects() async {
     final response = await http.get(Uri.parse('$baseUrl/projects/'));
     if (response.statusCode == 200) {
