@@ -89,40 +89,7 @@ async def upload_dpr_media(
 def get_dpr_media(dpr_id: uuid.UUID, db: Session = Depends(get_db)):
     return db.query(models.DPRMedia).filter(models.DPRMedia.dpr_entry_id == dpr_id).all()
 
-# Gangs
-@app.post("/gangs/")
-def create_gang(project_id: uuid.UUID, name: str, supervisor_id: uuid.UUID, db: Session = Depends(get_db)):
-    return crud.create_gang(db, project_id, name, supervisor_id)
-
-@app.get("/projects/{project_id}/gangs/")
-def get_gangs(project_id: uuid.UUID, db: Session = Depends(get_db)):
-    return crud.get_gangs(db, project_id)
-
-# Workers
-@app.post("/workers/")
-def create_worker(project_id: uuid.UUID, name: str, phone: str = None, skill_type: str = None, db: Session = Depends(get_db)):
-    return crud.create_worker(db, project_id, name, phone, skill_type)
-
-@app.post("/workers/{worker_id}/assign-gang/{gang_id}")
-def assign_worker_to_gang(worker_id: uuid.UUID, gang_id: uuid.UUID, db: Session = Depends(get_db)):
-    return crud.assign_worker_to_gang(db, worker_id, gang_id)
-
-@app.get("/gangs/{gang_id}/workers/")
-def get_gang_workers(gang_id: uuid.UUID, db: Session = Depends(get_db)):
-    return crud.get_workers_by_gang(db, gang_id)
-
-# Attendance
-@app.post("/attendance/", response_model=schemas.Attendance)
-def mark_attendance(attendance: schemas.AttendanceCreate, db: Session = Depends(get_db)):
-    return crud.mark_attendance(
-        db, 
-        attendance.project_id, 
-        attendance.worker_id, 
-        attendance.gang_id, 
-        attendance.entry_date, 
-        attendance.status, 
-        attendance.marked_by
-    )
+# Login (Managed below)
 
 import bcrypt
 
