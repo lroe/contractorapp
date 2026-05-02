@@ -193,11 +193,9 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  Future<void> _updateStatus(String taskId, String currentStatus) async {
-    final statusOptions = ['pending', 'in_progress', 'completed'];
-    final next = statusOptions[(statusOptions.indexOf(currentStatus) + 1) % statusOptions.length];
+  Future<void> _updateStatus(String taskId, String newStatus) async {
     try {
-      await _apiService.updateTaskStatus(taskId, next);
+      await _apiService.updateTaskStatus(taskId, newStatus);
       _loadData();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -274,6 +272,7 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget _buildTaskCard(dynamic task) {
     final status = task['status'] ?? 'pending';
     final deadline = task['deadline'];
+    final taskId = task['id'].toString();
 
     Color statusColor;
     IconData statusIcon;
@@ -291,7 +290,6 @@ class _TasksScreenState extends State<TasksScreen> {
         statusIcon = Icons.radio_button_unchecked;
     }
 
-    // Find work type name
     final workTypeId = task['work_type_id'];
     final workType = _workTypes.isNotEmpty
         ? _workTypes.firstWhere((w) => w['id'].toString() == workTypeId?.toString(), orElse: () => null)
@@ -300,75 +298,249 @@ class _TasksScreenState extends State<TasksScreen> {
     final unit = task['unit'] ?? '';
     final targetQty = task['target_quantity'] ?? 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task, workTypeName: workTypeName)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(statusIcon, color: statusColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(workTypeName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('Target: $targetQty $unit', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
-                    ],
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(statusIcon, color: statusColor, size: 20),
                   ),
-                ),
-                // Status badge — tap to cycle (supervisors only, for now)
-                GestureDetector(
-                  onTap: !isOwner ? () => _updateStatus(task['id'].toString(), status) : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                    child: Text(
-                      status.replaceAll('_', ' ').toUpperCase(),
-                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(workTypeName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text('Target: $targetQty $unit', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                      ],
                     ),
                   ),
+                  // Status popup menu
+                  PopupMenuButton<String>(
+                    tooltip: 'Update status',
+                    icon: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            status.replaceAll('_', ' ').toUpperCase(),
+                            style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down, size: 16, color: statusColor),
+                        ],
+                      ),
+                    ),
+                    onSelected: (newStatus) => _updateStatus(taskId, newStatus),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'pending', child: Text('Pending')),
+                      const PopupMenuItem(value: 'in_progress', child: Text('In Progress')),
+                      const PopupMenuItem(value: 'completed', child: Text('Completed')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (deadline != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 14, color: Color(0xFF94A3B8)),
+                    const SizedBox(width: 6),
+                    Text('Deadline: $deadline', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                    const Spacer(),
+                    const Icon(Icons.chevron_right, size: 16, color: Color(0xFFCBD5E1)),
+                    const Text('Tap to view reports', style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1))),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: const [
+                    Icon(Icons.chevron_right, size: 16, color: Color(0xFFCBD5E1)),
+                    Text('Tap to view reports', style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1))),
+                  ],
+                ),
+              ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              child: LinearProgressIndicator(
+                value: status == 'completed' ? 1.0 : status == 'in_progress' ? 0.5 : 0.0,
+                backgroundColor: const Color(0xFFF1F5F9),
+                color: statusColor,
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Task Detail Screen ───────────────────────────────────────────────────────
+
+class TaskDetailScreen extends StatelessWidget {
+  final dynamic task;
+  final String workTypeName;
+  const TaskDetailScreen({super.key, required this.task, required this.workTypeName});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = task['status'] ?? 'pending';
+    Color statusColor = status == 'completed'
+        ? const Color(0xFF10B981)
+        : status == 'in_progress'
+            ? const Color(0xFF3B82F6)
+            : const Color(0xFFF59E0B);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(workTypeName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Task summary card
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text(workTypeName, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      child: Text(status.replaceAll('_', ' ').toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _infoRow(Icons.flag_outlined, 'Target', '${task['target_quantity']} ${task['unit'] ?? ''}'),
+                if (task['deadline'] != null) _infoRow(Icons.calendar_today, 'Deadline', task['deadline']),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: status == 'completed' ? 1.0 : status == 'in_progress' ? 0.5 : 0.0,
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  color: statusColor,
+                  minHeight: 8,
                 ),
               ],
             ),
           ),
 
-          // Deadline row
-          if (deadline != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today, size: 14, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 6),
-                  Text('Deadline: $deadline', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-                ],
-              ),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text('Linked Reports', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
 
-          // Progress bar placeholder (in_progress = 50%, completed = 100%)
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            child: LinearProgressIndicator(
-              value: status == 'completed' ? 1.0 : status == 'in_progress' ? 0.5 : 0.0,
-              backgroundColor: const Color(0xFFF1F5F9),
-              color: statusColor,
-              minHeight: 6,
+          Expanded(
+            child: FutureBuilder<List<dynamic>>(
+              future: ApiService().getTaskDPRs(task['id'].toString()),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final reports = snapshot.data ?? [];
+                if (reports.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.description_outlined, size: 48, color: Color(0xFFCBD5E1)),
+                        const SizedBox(height: 12),
+                        Text('No reports linked to this task yet.', style: TextStyle(color: Colors.grey[400])),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: reports.length,
+                  itemBuilder: (context, i) {
+                    final report = reports[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
+                            child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 18),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(report['remarks'] ?? 'Report Submitted', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 4),
+                                Text('📅 ${report['entry_date']}', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
+          const SizedBox(width: 8),
+          Text('$label: ', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       ),
     );

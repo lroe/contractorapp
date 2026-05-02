@@ -21,6 +21,23 @@ class _DPRScreenState extends State<DPRScreen> {
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
 
+  List<dynamic> _tasks = [];
+  String? _selectedTaskId;
+  String? _selectedTaskName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    try {
+      final tasks = await _apiService.getProjectTasks(widget.project.id);
+      if (mounted) setState(() => _tasks = tasks.where((t) => t['status'] != 'completed').toList());
+    } catch (_) {} // non-critical
+  }
+
   Future<void> _pickMedia() async {
     final List<XFile> selectedImages = await _picker.pickMultiImage();
     if (selectedImages.isNotEmpty) {
@@ -49,7 +66,7 @@ class _DPRScreenState extends State<DPRScreen> {
         "area_id": null,
         "quantity": null,
         "remarks": _remarksController.text,
-        "linked_task_id": null,
+        "linked_task_id": _selectedTaskId,
       };
 
       await _apiService.submitDPR(dprData);
@@ -90,11 +107,13 @@ class _DPRScreenState extends State<DPRScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildInfoCard(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 _buildInputLabel('Update / Remarks'),
                 const SizedBox(height: 8),
                 _buildTextField(_remarksController, 'What happened on site today?', TextInputType.multiline, maxLines: 5),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+                _buildTaskSelector(),
+                const SizedBox(height: 28),
                 _buildMediaSection(),
                 const SizedBox(height: 48),
                 _buildSubmitButton(),
@@ -129,6 +148,71 @@ class _DPRScreenState extends State<DPRScreen> {
 
   Widget _buildInputLabel(String label) {
     return Text(label, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B)));
+  }
+
+  Widget _buildTaskSelector() {
+    if (_tasks.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _buildInputLabel('Link to Task'),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+              child: const Text('Optional', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              hint: const Text('Select a task to link (optional)', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
+              value: _selectedTaskId,
+              items: [
+                const DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: Color(0xFF94A3B8)))),
+                ..._tasks.map<DropdownMenuItem<String>>((t) {
+                  final name = t['work_type_id'] != null ? '${t['unit'] ?? ''} task — ${t['target_quantity']}' : 'Task';
+                  return DropdownMenuItem<String>(
+                    value: t['id'].toString(),
+                    child: Text(name, overflow: TextOverflow.ellipsis),
+                  );
+                }),
+              ],
+              onChanged: (val) => setState(() {
+                _selectedTaskId = val;
+                _selectedTaskName = val == null ? null : _tasks.firstWhere((t) => t['id'].toString() == val)['status'];
+              }),
+            ),
+          ),
+        ),
+        if (_selectedTaskId != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.link, size: 14, color: Color(0xFF3B82F6)),
+                const SizedBox(width: 6),
+                const Text('Report will be linked to this task', style: TextStyle(fontSize: 12, color: Color(0xFF3B82F6))),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() { _selectedTaskId = null; _selectedTaskName = null; }),
+                  child: const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8)),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _buildTextField(TextEditingController? controller, String hint, TextInputType type, {int maxLines = 1}) {

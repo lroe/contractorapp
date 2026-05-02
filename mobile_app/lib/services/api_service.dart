@@ -200,4 +200,13 @@ class ApiService {
       throw Exception('Failed to update task status: ${response.body}');
     }
   }
+
+  Future<List<dynamic>> getTaskDPRs(String taskId) async {
+    final response = await http.get(Uri.parse('$baseUrl/tasks/$taskId/dpr/'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load task reports');
+    }
+  }
 }

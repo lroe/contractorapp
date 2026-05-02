@@ -188,3 +188,9 @@ def update_task_status(task_id: uuid.UUID, status: str, db: Session = Depends(ge
     db.commit()
     db.refresh(task)
     return task
+
+@app.get("/tasks/{task_id}/dpr/")
+def get_task_dpr(task_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.DPREntry).filter(
+        models.DPREntry.linked_task_id == task_id
+    ).order_by(models.DPREntry.entry_date.desc()).all()
