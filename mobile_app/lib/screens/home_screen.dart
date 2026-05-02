@@ -367,7 +367,13 @@ class _HomeScreenState extends State<HomeScreen> {
           'Attendance',
           Icons.people_alt,
           const Color(0xFF10B981),
-          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceScreen())),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AttendanceScreen(project: _selectedProject!, user: _currentUser!)));
+          },
         ),
         _buildActionCard(
           context,

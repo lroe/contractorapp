@@ -329,4 +329,44 @@ class ApiService {
     );
     if (response.statusCode != 200) throw Exception('Failed to create transaction');
   }
+
+  // Attendance & Gangs
+  Future<List<dynamic>> getGangs(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/gangs/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load gangs');
+  }
+
+  Future<void> createGang(Map<String, dynamic> gangData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/gangs/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(gangData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to create gang');
+  }
+
+  Future<List<dynamic>> getWorkers(String gangId) async {
+    final response = await http.get(Uri.parse('$baseUrl/gangs/$gangId/workers/'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load workers');
+  }
+
+  Future<void> createWorker(Map<String, dynamic> workerData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/workers/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(workerData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to create worker');
+  }
+
+  Future<void> submitAttendance(Map<String, dynamic> attData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/attendance/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(attData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to submit attendance');
+  }
 }

@@ -334,3 +334,24 @@ def create_transaction(transaction: schemas.TransactionCreate, db: Session = Dep
 @app.get("/projects/{project_id}/transactions/", response_model=List[schemas.Transaction])
 def read_transactions(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_project_transactions(db, project_id)
+
+# Workers & Gangs
+@app.post("/gangs/", response_model=schemas.Gang)
+def create_gang(gang: schemas.GangCreate, db: Session = Depends(get_db)):
+    return crud.create_gang(db, gang)
+
+@app.get("/projects/{project_id}/gangs/", response_model=List[schemas.Gang])
+def read_gangs(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_project_gangs(db, project_id)
+
+@app.post("/workers/", response_model=schemas.Worker)
+def create_worker(worker: schemas.WorkerCreate, db: Session = Depends(get_db)):
+    return crud.create_worker(db, worker)
+
+@app.get("/gangs/{gang_id}/workers/", response_model=List[schemas.Worker])
+def read_workers(gang_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_gang_workers(db, gang_id)
+
+@app.post("/attendance/", response_model=schemas.Attendance)
+def mark_attendance(attendance: schemas.AttendanceCreate, db: Session = Depends(get_db)):
+    return crud.mark_attendance(db, attendance)

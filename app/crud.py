@@ -187,3 +187,42 @@ def create_transaction(db: Session, transaction: schemas.TransactionCreate):
 
 def get_project_transactions(db: Session, project_id: uuid.UUID):
     return db.query(models.Transaction).filter(models.Transaction.project_id == project_id).order_by(models.Transaction.transaction_date.desc()).all()
+
+# Workers & Gangs
+def create_gang(db: Session, gang: schemas.GangCreate):
+    db_gang = models.Gang(**gang.dict())
+    db.add(db_gang)
+    db.commit()
+    db.refresh(db_gang)
+    return db_gang
+
+def get_project_gangs(db: Session, project_id: uuid.UUID):
+    return db.query(models.Gang).filter(models.Gang.project_id == project_id).all()
+
+def create_worker(db: Session, worker: schemas.WorkerCreate):
+    db_worker = models.Worker(**worker.dict())
+    db.add(db_worker)
+    db.commit()
+    db.refresh(db_worker)
+    return db_worker
+
+def get_gang_workers(db: Session, gang_id: uuid.UUID):
+    return db.query(models.Worker).filter(models.Worker.gang_id == gang_id).all()
+
+def mark_attendance(db: Session, attendance: schemas.AttendanceCreate):
+    # Upsert logic (replace if already exists for that day)
+    db_att = db.query(models.Attendance).filter(
+        models.Attendance.worker_id == attendance.worker_id,
+        models.Attendance.entry_date == attendance.entry_date
+    ).first()
+    
+    if db_att:
+        db_att.status = attendance.status
+        db_att.marked_by = attendance.marked_by
+    else:
+        db_att = models.Attendance(**attendance.dict())
+        db.add(db_att)
+    
+    db.commit()
+    db.refresh(db_att)
+    return db_att

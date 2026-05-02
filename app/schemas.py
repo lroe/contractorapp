@@ -217,3 +217,51 @@ class Transaction(TransactionBase):
     created_at: datetime
     class Config:
         from_attributes = True
+
+# Worker & Gang Schemas
+class WorkerBase(BaseModel):
+    project_id: UUID
+    name: str
+    phone: Optional[str] = None
+    skill_type: Optional[str] = None
+    gang_id: Optional[UUID] = None
+
+class WorkerCreate(WorkerBase):
+    pass
+
+class Worker(WorkerBase):
+    id: UUID
+    is_active: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class GangBase(BaseModel):
+    project_id: UUID
+    name: str
+    supervisor_id: Optional[UUID] = None
+
+class GangCreate(GangBase):
+    pass
+
+class Gang(GangBase):
+    id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class AttendanceBase(BaseModel):
+    project_id: UUID
+    worker_id: UUID
+    gang_id: Optional[UUID] = None
+    entry_date: date
+    status: str # present, absent, half_day
+
+class AttendanceCreate(AttendanceBase):
+    marked_by: UUID
+
+class Attendance(AttendanceBase):
+    id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
