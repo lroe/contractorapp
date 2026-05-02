@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dpr_screen.dart';
 import 'attendance_screen.dart';
+import 'project_management_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final String role = ModalRoute.of(context)!.settings.arguments as String? ?? 'supervisor';
+    final bool isOwner = role == 'owner';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC), // Slate 50
       body: SafeArea(
@@ -16,9 +20,9 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              _buildHeader(role),
               const SizedBox(height: 32),
-              _buildStatsRow(),
+              _buildStatsRow(isOwner),
               const SizedBox(height: 32),
               Text(
                 'Quick Actions',
@@ -29,7 +33,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildActionGrid(context),
+              _buildActionGrid(context, isOwner),
             ],
           ),
         ),
@@ -37,7 +41,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(String role) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -45,7 +49,7 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hello, Jeevan',
+              'Hello, ${role == 'owner' ? 'Contractor' : 'Jeevan'}',
               style: GoogleFonts.outfit(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -53,7 +57,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             Text(
-              'Site Supervisor • Project Alpha',
+              role == 'owner' ? 'Business Owner' : 'Site Supervisor • Project Alpha',
               style: GoogleFonts.outfit(
                 fontSize: 16,
                 color: const Color(0xFF64748B),
@@ -70,12 +74,12 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(bool isOwner) {
     return Row(
       children: [
-        _buildStatCard('Pending Tasks', '12', Colors.orange),
+        _buildStatCard(isOwner ? 'Active Projects' : 'Pending Tasks', isOwner ? '04' : '12', isOwner ? Colors.blue : Colors.orange),
         const SizedBox(width: 16),
-        _buildStatCard('Work Progress', '65%', Colors.blue),
+        _buildStatCard(isOwner ? 'Total Revenue' : 'Work Progress', isOwner ? '₹1.2M' : '65%', isOwner ? Colors.green : Colors.blue),
       ],
     );
   }
@@ -114,14 +118,43 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionGrid(BuildContext context) {
+  Widget _buildActionGrid(BuildContext context, bool isOwner) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
       mainAxisSpacing: 16,
       crossAxisSpacing: 16,
-      children: [
+      children: isOwner ? [
+        _buildActionCard(
+          context,
+          'Create Project',
+          Icons.add_business,
+          const Color(0xFF1E293B),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProjectManagementScreen())),
+        ),
+        _buildActionCard(
+          context,
+          'Supervisors',
+          Icons.person_search,
+          const Color(0xFF3B82F6),
+          () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ProjectManagementScreen())),
+        ),
+        _buildActionCard(
+          context,
+          'Reports',
+          Icons.bar_chart,
+          const Color(0xFFF59E0B),
+          () {},
+        ),
+        _buildActionCard(
+          context,
+          'Settings',
+          Icons.settings,
+          const Color(0xFF64748B),
+          () {},
+        ),
+      ] : [
         _buildActionCard(
           context,
           'DPR Entry',

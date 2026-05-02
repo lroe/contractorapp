@@ -106,3 +106,20 @@ def mark_attendance(attendance: schemas.AttendanceCreate, db: Session = Depends(
         attendance.status, 
         attendance.marked_by
     )
+
+# Mock Login
+@app.post("/login/")
+def login(phone: str, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_phone(db, phone=phone)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"id": db_user.id, "name": db_user.name, "role": db_user.role}
+
+# Project Assignment
+@app.post("/projects/{project_id}/assign/")
+def assign_supervisor(project_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.assign_user_to_project(db, project_id, user_id, role='supervisor')
+
+@app.get("/projects/{project_id}/supervisors/")
+def get_supervisors(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_project_supervisors(db, project_id)

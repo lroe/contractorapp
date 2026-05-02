@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/models.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ void main() async {
   Hive.registerAdapter(AttendanceAdapter());
   
   // Open Boxes
+  await Hive.openBox<Project>('projects');
   await Hive.openBox<Gang>('gangs');
   await Hive.openBox<Worker>('workers');
   await Hive.openBox<Attendance>('attendance');
@@ -40,7 +42,11 @@ class ContractorApp extends StatelessWidget {
         ),
         textTheme: GoogleFonts.outfitTextTheme(),
       ),
-      home: const HomeScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
     );
   }
 }

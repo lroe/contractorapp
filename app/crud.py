@@ -95,3 +95,17 @@ def mark_attendance(db: Session, project_id: uuid.UUID, worker_id: uuid.UUID, ga
     db.commit()
     db.refresh(db_attendance)
     return db_attendance
+
+# Project User CRUD
+def assign_user_to_project(db: Session, project_id: uuid.UUID, user_id: uuid.UUID, role: str):
+    db_project_user = models.ProjectUser(project_id=project_id, user_id=user_id, role=role)
+    db.add(db_project_user)
+    db.commit()
+    db.refresh(db_project_user)
+    return db_project_user
+
+def get_project_supervisors(db: Session, project_id: uuid.UUID):
+    return db.query(models.User).join(models.ProjectUser).filter(
+        models.ProjectUser.project_id == project_id,
+        models.ProjectUser.role == 'supervisor'
+    ).all()
