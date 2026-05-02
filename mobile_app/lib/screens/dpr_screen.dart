@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
 import '../models/models.dart';
+import 'report_detail_screen.dart';
 
 class DPRScreen extends StatefulWidget {
   final Project project;
@@ -293,36 +294,90 @@ class ReportsListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Project Reports: ${project.name}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Reports', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20)),
+            Text(project.name, style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
+          ],
+        ),
+      ),
       body: FutureBuilder<List<dynamic>>(
         future: ApiService().getProjectDPRs(project.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
           final reports = snapshot.data ?? [];
-          if (reports.isEmpty) return const Center(child: Text('No reports found for this project.'));
+          if (reports.isEmpty) return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.description_outlined, size: 64, color: Color(0xFFCBD5E1)),
+                const SizedBox(height: 16),
+                Text('No reports yet', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF94A3B8))),
+              ],
+            ),
+          );
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: reports.length,
             itemBuilder: (context, index) {
-              final report = reports[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: Padding(
+              final report = reports[index] as Map<String, dynamic>;
+              final hasLinkedTask = report['linked_task_id'] != null;
+              return GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ReportDetailScreen(report: report)),
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 14),
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+                  ),
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Date: ${report['entry_date']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          const Icon(Icons.check_circle, color: Colors.green, size: 16),
-                        ],
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 22),
                       ),
-                      const SizedBox(height: 8),
-                      Text(report['remarks'] ?? 'No remarks', style: const TextStyle(fontSize: 16)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text('📅 ${report['entry_date']}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14)),
+                                if (hasLinkedTask) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                                    child: const Text('Linked', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              report['remarks'] ?? 'No remarks provided.',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1)),
                     ],
                   ),
                 ),

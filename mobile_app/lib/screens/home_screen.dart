@@ -4,6 +4,7 @@ import 'dpr_screen.dart';
 import 'attendance_screen.dart';
 import 'project_management_screen.dart';
 import 'tasks_screen.dart';
+import 'report_detail_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
@@ -381,33 +382,59 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActivityTile(dynamic report) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+    final hasLinkedTask = report['linked_task_id'] != null;
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ReportDetailScreen(report: Map<String, dynamic>.from(report))),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(report['remarks'] ?? 'Report Submitted', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('Date: ${report['entry_date']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-              ],
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Flexible(
+                      child: Text(
+                        report['remarks']?.isNotEmpty == true ? report['remarks'] : 'Report Submitted',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (hasLinkedTask) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                        child: const Text('linked', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ]),
+                  const SizedBox(height: 3),
+                  Text('📅 ${report['entry_date']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
+          ],
+        ),
       ),
     );
   }
