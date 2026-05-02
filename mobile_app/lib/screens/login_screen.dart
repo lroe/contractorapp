@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await _apiService.login(_phoneController.text, _passwordController.text);
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home', arguments: user.role);
+      Navigator.pushReplacementNamed(context, '/home', arguments: user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));

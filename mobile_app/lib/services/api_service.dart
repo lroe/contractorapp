@@ -22,10 +22,20 @@ class ApiService {
   Future<List<Project>> getProjects() async {
     final response = await http.get(Uri.parse('$baseUrl/projects/'));
     if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => Project.fromJson(data)).toList();
+      Iterable l = json.decode(response.body);
+      return List<Project>.from(l.map((model) => Project.fromJson(model)));
     } else {
       throw Exception('Failed to load projects');
+    }
+  }
+
+  Future<List<Project>> getProjectsForUser(String userId) async {
+    final response = await http.get(Uri.parse('$baseUrl/users/$userId/projects/'));
+    if (response.statusCode == 200) {
+      Iterable l = json.decode(response.body);
+      return List<Project>.from(l.map((model) => Project.fromJson(model)));
+    } else {
+      throw Exception('Failed to load user projects');
     }
   }
 

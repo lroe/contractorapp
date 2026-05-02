@@ -132,3 +132,9 @@ def assign_supervisor(project_id: uuid.UUID, user_id: uuid.UUID, db: Session = D
 @app.get("/projects/{project_id}/supervisors/")
 def get_supervisors(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_project_supervisors(db, project_id)
+
+@app.get("/users/{user_id}/projects/")
+def get_user_projects(user_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.Project).join(models.ProjectUser).filter(
+        models.ProjectUser.user_id == user_id
+    ).all()
