@@ -44,8 +44,12 @@ class _DPRScreenState extends State<DPRScreen> {
         "supervisor_id": widget.user.id,
         "entry_date": DateTime.now().toIso8601String().split('T')[0],
         "work_type_id": null,
+        "block_id": null,
+        "floor_id": null,
+        "area_id": null,
         "quantity": null,
         "remarks": _remarksController.text,
+        "linked_task_id": null,
       };
 
       await _apiService.submitDPR(dprData);
