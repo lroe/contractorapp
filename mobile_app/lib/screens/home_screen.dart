@@ -483,10 +483,17 @@ class _HomeScreenState extends State<HomeScreen> {
     Color statusColor = status == 'pending' ? Colors.orange : (status == 'approved' ? Colors.blue : Colors.green);
     
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => InventoryScreen(project: _selectedProject!, user: _currentUser!)),
-      ),
+      onTap: () {
+        final projectId = req['project_id'];
+        final project = _assignedProjects.firstWhere(
+          (p) => p.id == projectId,
+          orElse: () => Project(id: projectId, name: req['project_name'], ownerId: ''),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => InventoryScreen(project: project, user: _currentUser!)),
+        );
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
