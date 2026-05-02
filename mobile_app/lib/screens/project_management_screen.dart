@@ -48,7 +48,7 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
                   // Create on backend first to get a valid UUID
                   final createdProject = await ApiService().createProject(
                     nameController.text,
-                    widget.user.id,
+                    widget.user!.id,
                   );
                   _projectBox.add(createdProject);
                   if (mounted) setState(() {});
