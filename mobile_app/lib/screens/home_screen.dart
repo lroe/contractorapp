@@ -487,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final projectId = req['project_id'];
         final project = _assignedProjects.firstWhere(
           (p) => p.id == projectId,
-          orElse: () => Project(id: projectId, name: req['project_name'], ownerId: ''),
+          orElse: () => Project(id: projectId, name: req['project_name'], status: 'active'),
         );
         Navigator.push(
           context,
