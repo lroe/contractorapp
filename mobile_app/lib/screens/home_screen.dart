@@ -77,6 +77,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildNoAssignmentWarning()
               else
                 _buildActionGrid(context, isOwner),
+              const SizedBox(height: 32),
+              _buildRecentActivity(),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -294,6 +297,87 @@ class _HomeScreenState extends State<HomeScreen> {
           () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AttendanceScreen())),
         ),
       ],
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    final projectId = _selectedProject?.id;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Recent Activity', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+            TextButton(
+              onPressed: () {
+                if (_selectedProject != null) {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsListScreen(project: _selectedProject!)));
+                } else {
+                  // If Owner or no project selected, show all project reports via management screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProjectManagementScreen(
+                        onProjectTap: (project) => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ReportsListScreen(project: project)),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('View All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        FutureBuilder<List<dynamic>>(
+          future: projectId != null ? _apiService.getProjectDPRs(projectId) : _apiService.getRecentReports(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+            final reports = snapshot.data ?? [];
+            if (reports.isEmpty) return const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No recent reports.')));
+
+            return Column(
+              children: reports.take(3).map((report) => _buildActivityTile(report)).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivityTile(dynamic report) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(report['remarks'] ?? 'Report Submitted', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Date: ${report['entry_date']}', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
+        ],
+      ),
     );
   }
 

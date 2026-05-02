@@ -151,4 +151,13 @@ class ApiService {
       throw Exception('Failed to assign supervisor: ${response.body}');
     }
   }
+
+  Future<List<dynamic>> getRecentReports({int limit = 5}) async {
+    final response = await http.get(Uri.parse('$baseUrl/dpr/recent/?limit=$limit'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load recent reports');
+    }
+  }
 }

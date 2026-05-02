@@ -145,4 +145,8 @@ def get_user_projects(user_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @app.get("/projects/{project_id}/dpr/")
 def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
-    return db.query(models.DPREntry).filter(models.DPREntry.project_id == project_id).all()
+    return db.query(models.DPREntry).filter(models.DPREntry.project_id == project_id).order_by(models.DPREntry.entry_date.desc()).all()
+
+@app.get("/dpr/recent/")
+def get_recent_dpr(limit: int = 5, db: Session = Depends(get_db)):
+    return db.query(models.DPREntry).order_by(models.DPREntry.created_at.desc()).limit(limit).all()
