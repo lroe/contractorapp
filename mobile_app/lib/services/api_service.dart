@@ -323,7 +323,9 @@ class ApiService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(gangData),
     );
-    if (response.statusCode != 200) throw Exception('Failed to create gang');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create gang: ${response.body}');
+    }
   }
 
   Future<List<dynamic>> getWorkers(String gangId) async {
