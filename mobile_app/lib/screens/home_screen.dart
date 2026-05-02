@@ -282,6 +282,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        _buildActionCard(
+          context,
+          'Inventory',
+          Icons.inventory_2_outlined,
+          const Color(0xFFEC4899),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => InventoryScreen(project: project, user: _currentUser!)),
+                ),
+              ),
+            ),
+          ),
+        ),
       ] : [
         _buildActionCard(
           context,

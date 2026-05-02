@@ -71,8 +71,18 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               Text('Request Material', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
               
-              Text('Select Material', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Select Material', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                  TextButton.icon(
+                    onPressed: _showCreateMaterialDialog,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('New Type', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
                 items: _materials.map((m) => DropdownMenuItem(value: m['id'].toString(), child: Text('${m['name']} (${m['unit']})'))).toList(),
@@ -124,6 +134,53 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showCreateMaterialDialog() {
+    final nameController = TextEditingController();
+    final unitController = TextEditingController();
+    String? selectedCategory = 'Structural';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Create New Material', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Material Name (e.g. White Cement)')),
+            TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit (e.g. Kg, Bags)')),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: selectedCategory,
+              decoration: const InputDecoration(labelText: 'Category'),
+              items: ['Structural', 'Finishing', 'Plumbing', 'Electrical', 'Others'].map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              onChanged: (val) => selectedCategory = val,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty || unitController.text.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                await _apiService.createMaterial({
+                  'name': nameController.text,
+                  'unit': unitController.text,
+                  'category': selectedCategory,
+                });
+                _loadData();
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
   }

@@ -251,6 +251,15 @@ class ApiService {
     throw Exception('Failed to load materials');
   }
 
+  Future<void> createMaterial(Map<String, dynamic> materialData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/materials/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(materialData),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to create material');
+  }
+
   Future<List<dynamic>> getProjectInventory(String projectId) async {
     final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/inventory/'));
     if (response.statusCode == 200) return json.decode(response.body);
