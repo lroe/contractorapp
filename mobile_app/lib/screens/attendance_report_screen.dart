@@ -37,7 +37,7 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
     }
   }
 
-  int get _totalManDays => _summary.fold(0, (sum, item) => sum + (item['count'] as int));
+  double get _totalManDays => _summary.fold(0.0, (sum, item) => sum + (double.tryParse(item['count'].toString()) ?? 0.0));
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +166,7 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(date, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('$count Workers Present', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                    Text('${item['count']} Man-days', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
                   ],
                 ),
               ),

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, case
 from typing import List, Optional
 import uuid
 import os
@@ -131,13 +131,16 @@ def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
 def get_attendance_summary(project_id: uuid.UUID, db: Session = Depends(get_db)):
     summary = db.query(
         models.Attendance.entry_date,
-        func.count(models.Attendance.id).label("total_present")
+        func.sum(case(
+            (models.Attendance.status == "present", 1.0),
+            (models.Attendance.status == "half_day", 0.5),
+            else_=0.0
+        )).label("total_man_days")
     ).filter(
-        models.Attendance.project_id == project_id,
-        models.Attendance.status == "PRESENT"
+        models.Attendance.project_id == project_id
     ).group_by(models.Attendance.entry_date).order_by(models.Attendance.entry_date.desc()).all()
     
-    return [{"date": s.entry_date, "count": s.total_present} for s in summary]
+    return [{"date": s.entry_date, "count": float(s.total_man_days)} for s in summary]
 
 @app.get("/dpr/recent/")
 def get_recent_dpr(limit: int = 5, db: Session = Depends(get_db)):
