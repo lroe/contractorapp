@@ -43,8 +43,8 @@ class _DPRScreenState extends State<DPRScreen> {
         "project_id": widget.project.id,
         "supervisor_id": widget.user.id,
         "entry_date": DateTime.now().toIso8601String().split('T')[0],
-        "work_type_id": "00000000-0000-0000-0000-000000000000", // Default or select from list
-        "quantity": 0,
+        "work_type_id": null,
+        "quantity": null,
         "remarks": _remarksController.text,
       };
 

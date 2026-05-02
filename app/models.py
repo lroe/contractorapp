@@ -120,7 +120,7 @@ class DPREntry(Base):
     block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id"))
     floor_id = Column(UUID(as_uuid=True), ForeignKey("floors.id"))
     area_id = Column(UUID(as_uuid=True), ForeignKey("areas.id"))
-    quantity = Column(Numeric(12, 2), nullable=False)
+    quantity = Column(Numeric(12, 2), nullable=True)
     remarks = Column(Text)
     linked_task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id"), index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
