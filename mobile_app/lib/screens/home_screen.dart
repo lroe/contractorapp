@@ -68,6 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               _buildStatsRow(isOwner),
               const SizedBox(height: 32),
+              _buildRecentActivity(),
+              const SizedBox(height: 32),
               Text(
                 'Quick Actions',
                 style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
@@ -77,8 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildNoAssignmentWarning()
               else
                 _buildActionGrid(context, isOwner),
-              const SizedBox(height: 32),
-              _buildRecentActivity(),
               const SizedBox(height: 32),
             ],
           ),
