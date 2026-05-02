@@ -107,27 +107,7 @@ class ApiService {
     }
   }
 
-  // Gangs
-  Future<List<Gang>> getGangs(String projectId) async {
-    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/gangs/'));
-    if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((data) => Gang.fromJson(data)).toList();
-    } else {
-      throw Exception('Failed to load gangs');
-    }
-  }
-
-  Future<Gang> createGang(String projectId, String name, String supervisorId) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/gangs/?project_id=$projectId&name=$name&supervisor_id=$supervisorId'),
-    );
-    if (response.statusCode == 200) {
-      return Gang.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Failed to create gang');
-    }
-  }
+  // Workforce Management
 
   // Workers
   Future<List<Worker>> getGangWorkers(String gangId) async {
