@@ -383,6 +383,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildActivityTile(dynamic report) {
     final hasLinkedTask = report['linked_task_id'] != null;
+    final media = report['media'] as List<dynamic>? ?? [];
+    final hasMedia = media.isNotEmpty;
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -400,9 +403,22 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: hasMedia
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        'http://localhost:8000${media[0]['media_url']}',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
+                      ),
+                    )
+                  : const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
             ),
             const SizedBox(width: 16),
             Expanded(

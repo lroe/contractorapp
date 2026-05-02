@@ -479,7 +479,8 @@ class TaskDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 itemCount: reports.length,
                 itemBuilder: (context, i) {
-                  final report = reports[i] as Map<String, dynamic>;
+                  final media = report['media'] as List<dynamic>? ?? [];
+                  final hasMedia = media.isNotEmpty;
                   return GestureDetector(
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (ctx) => ReportDetailScreen(report: report))),
                     child: Container(
@@ -492,9 +493,22 @@ class TaskDetailScreen extends StatelessWidget {
                       ),
                       child: Row(children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                          child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 18),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: hasMedia
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    'http://localhost:8000${media[0]['media_url']}',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 18),
+                                  ),
+                                )
+                              : const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 18),
                         ),
                         const SizedBox(width: 14),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

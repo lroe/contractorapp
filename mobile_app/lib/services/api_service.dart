@@ -59,13 +59,15 @@ class ApiService {
     }
   }
 
-  Future<void> submitDPR(Map<String, dynamic> dprData) async {
+  Future<Map<String, dynamic>> submitDPR(Map<String, dynamic> dprData) async {
     final response = await http.post(
       Uri.parse('$baseUrl/dpr/'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(dprData),
     );
-    if (response.statusCode != 200) {
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
       throw Exception('Failed to submit DPR: ${response.body}');
     }
   }

@@ -333,7 +333,8 @@ class ReportsListScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             itemCount: reports.length,
             itemBuilder: (context, index) {
-              final report = reports[index] as Map<String, dynamic>;
+              final media = report['media'] as List<dynamic>? ?? [];
+              final hasMedia = media.isNotEmpty;
               final hasLinkedTask = report['linked_task_id'] != null;
               return GestureDetector(
                 onTap: () => Navigator.push(
@@ -351,9 +352,22 @@ class ReportsListScreen extends StatelessWidget {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 22),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: hasMedia
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  'http://localhost:8000${media[0]['media_url']}',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 22),
+                                ),
+                              )
+                            : const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 22),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
