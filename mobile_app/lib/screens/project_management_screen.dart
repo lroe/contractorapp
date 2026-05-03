@@ -34,7 +34,7 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
   Future<void> _syncProjects() async {
     if (widget.user == null) return;
     try {
-      final remoteProjects = await ApiService().getProjectsForUser(widget.user!.id);
+      final remoteProjects = await ApiService().getProjects(widget.user!.organizationId!, userId: widget.user!.id);
       await _projectBox.clear();
       await _projectBox.addAll(remoteProjects);
     } catch (e) {
@@ -61,7 +61,7 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
                   // Create on backend first to get a valid UUID
                   final createdProject = await ApiService().createProject(
                     nameController.text,
-                    widget.user!.id,
+                    widget.user!.organizationId!,
                   );
                   _projectBox.add(createdProject);
                   if (mounted) setState(() {});
@@ -176,7 +176,7 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
           // Default: Navigate to assign supervisor
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => AssignSupervisorScreen(project: project)),
+            MaterialPageRoute(builder: (context) => AssignSupervisorScreen(project: project, organizationId: widget.user!.organizationId!)),
           );
         },
       ),
@@ -186,7 +186,8 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
 
 class AssignSupervisorScreen extends StatefulWidget {
   final Project project;
-  const AssignSupervisorScreen({super.key, required this.project});
+  final String organizationId;
+  const AssignSupervisorScreen({super.key, required this.project, required this.organizationId});
 
   @override
   State<AssignSupervisorScreen> createState() => _AssignSupervisorScreenState();
@@ -208,7 +209,7 @@ class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
-        _apiService.getSupervisors(),
+        _apiService.listUsers(role: 'supervisor', organizationId: widget.organizationId),
         _apiService.getProjectSupervisors(widget.project.id),
       ]);
       setState(() {

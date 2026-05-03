@@ -23,9 +23,21 @@
           <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
           Dashboard
         </a>
+        <a href="{{ url_for('material_requests') }}" class="nav-item {% if request.endpoint == 'material_requests' %}active{% endif %}">
+          <svg viewBox="0 0 24 24"><path d="M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"/></svg>
+          Material Requests
+        </a>
         <a href="{{ url_for('vendors') }}" class="nav-item {% if 'vendor' in request.endpoint %}active{% endif %}">
           <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
           Vendors
+        </a>
+        <a href="{{ url_for('materials_page') }}" class="nav-item {% if 'material' in request.endpoint and request.endpoint != 'material_requests' %}active{% endif %}">
+          <svg viewBox="0 0 24 24"><path d="M12 3L2 12h3v8h14v-8h3L12 3zm0 4.84L18.47 12H17v6h-3v-4h-4v4H7v-6H5.53L12 7.84z"/></svg>
+          Materials
+        </a>
+        <a href="{{ url_for('projects_page') }}" class="nav-item {% if 'project' in request.endpoint %}active{% endif %}">
+          <svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+          Projects/Sites
         </a>
         <a href="{{ url_for('purchase_orders') }}" class="nav-item {% if 'purchase' in request.endpoint or 'po' in request.endpoint %}active{% endif %}">
           <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
@@ -51,7 +63,7 @@
 
       <div class="sidebar-footer">
         <div class="user-chip">
-          <div class="user-avatar">{{ session.user_name[0].upper() }}</div>
+          <div class="user-avatar">{{ (session.user_name or 'U')[0].upper() }}</div>
           <div>
             <div class="user-name">{{ session.user_name }}</div>
             <div class="user-role">{{ session.user_role | replace('_', ' ') | title }}</div>

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Material Requests{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Material Requests</div>
+    <div class="page-subtitle">Approval workflow for site-level material indents.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Pending & Recent Requests</span>
+  </div>
+  {% if requests %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Project</th>
+          <th>Material</th>
+          <th>Quantity</th>
+          <th>Requested By</th>
+          <th>Status</th>
+          <th style="text-align:right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr style="border-bottom: 1px solid #f1f5f9">
+          <td>{{ req.created_at.strftime('%d %b %Y') }}</td>
+          <td><strong>{{ req.project.name if req.project else '—' }}</strong></td>
+          <td>{{ req.material.name if req.material else '—' }}</td>
+          <td>{{ req.quantity }} {{ req.material.unit if req.material else '' }}</td>
+          <td>{{ req.requested_by_user.name if req.requested_by_user else '—' }}</td>
+          <td><span class="badge badge-{{ req.status }}">{{ req.status }}</span></td>
+          <td style="text-align:right">
+            {% if req.status == 'pending' %}
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <form action="{{ url_for('approve_request', request_id=req.id) }}" method="POST">
+                <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+              </form>
+              <form action="{{ url_for('reject_request', request_id=req.id) }}" method="POST">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:#DC2626">Reject</button>
+              </form>
+            </div>
+            {% elif req.status == 'received' %}
+              <span style="color: #059669; font-size: 0.875rem">✔ Verified by Site</span>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% if req.remarks or req.received_remarks or req.media %}
+        <tr style="background-color: #f8fafc">
+          <td colspan="7" style="padding: 12px 24px">
+            <div style="display: flex; gap: 24px; align-items: flex-start">
+              {% if req.remarks %}
+                <div style="font-size: 0.8rem; color: #64748b">
+                  <strong>Request Note:</strong> {{ req.remarks }}
+                </div>
+              {% endif %}
+              {% if req.received_remarks %}
+                <div style="font-size: 0.8rem; color: #059669">
+                  <strong>Delivery Note:</strong> {{ req.received_remarks }}
+                </div>
+              {% endif %}
+              {% if req.media %}
+                <div style="display: flex; gap: 8px">
+                  {% for m in req.media %}
+                    <a href="http://localhost:8000{{ m.media_url }}" target="_blank">
+                      <img src="http://localhost:8000{{ m.media_url }}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; border: 1px solid #e2e8f0">
+                    </a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="icon">📝</div>
+    <h3>No material requests found</h3>
+    <p>Supervisors can raise requests via the mobile app.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

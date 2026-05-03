@@ -251,8 +251,8 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(tx['category'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                    if (tx['remarks'] != null && tx['remarks'].isNotEmpty)
-                      Text(tx['remarks'], style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                    if (tx['description'] != null && tx['description'].isNotEmpty)
+                      Text(tx['description'], style: TextStyle(color: Colors.grey[500], fontSize: 12)),
                     Text(tx['transaction_date'], style: TextStyle(color: Colors.grey[400], fontSize: 11)),
                   ],
                 ),

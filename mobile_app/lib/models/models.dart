@@ -14,8 +14,17 @@ class User extends HiveObject {
   final String? email;
   @HiveField(4)
   final String role;
+  @HiveField(5)
+  final String? organizationId;
 
-  User({required this.id, required this.name, required this.phone, this.email, required this.role});
+  User({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.email,
+    required this.role,
+    this.organizationId,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -24,6 +33,7 @@ class User extends HiveObject {
       phone: json['phone'] ?? '',
       email: json['email'],
       role: json['role'] ?? 'supervisor',
+      organizationId: json['organization_id'],
     );
   }
 }

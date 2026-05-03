@@ -46,10 +46,10 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     _seenRequestIds = (prefs.getStringList('seen_material_request_ids') ?? []).toSet();
 
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _apiService.getProjectInventory(widget.project.id),
         _apiService.getMaterialRequests(widget.project.id),
-        _apiService.getMaterials(),
+        _apiService.getMaterials(widget.user.organizationId!),
       ]);
       setState(() {
         _inventory = results[0];
@@ -76,6 +76,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     String? selectedMaterialId;
     final quantityController = TextEditingController();
     final remarksController = TextEditingController();
+    final List<XFile> photos = [];
 
     showModalBottomSheet(
       context: context,
@@ -176,29 +177,98 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               ),
               const SizedBox(height: 24),
 
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (selectedMaterialId == null || quantityController.text.isEmpty) return;
-                    Navigator.pop(ctx);
-                    try {
-                      await _apiService.createMaterialRequest({
-                        'project_id': widget.project.id,
-                        'material_id': selectedMaterialId,
-                        'quantity': double.parse(quantityController.text),
-                        'remarks': remarksController.text,
-                        'requested_by': widget.user.id,
-                      });
-                      _loadData();
-                    } catch (e) {
-                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  child: Text('Submit Request', style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Receipt Photos (Optional)', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final picked = await ImagePicker().pickMultiImage();
+                      if (picked.isNotEmpty) setModalState(() => photos.addAll(picked));
+                    },
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                    label: const Text('Add Photos'),
+                  ),
+                ],
+              ),
+              if (photos.isNotEmpty)
+                SizedBox(
+                  height: 60,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: photos.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => Stack(
+                      children: [
+                        ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(photos[i].path), width: 60, height: 60, fit: BoxFit.cover)),
+                        Positioned(top: 0, right: 0, child: GestureDetector(onTap: () => setModalState(() => photos.removeAt(i)), child: const Icon(Icons.cancel, size: 18, color: Colors.red))),
+                      ],
+                    ),
+                  ),
                 ),
+
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (selectedMaterialId == null || quantityController.text.isEmpty) return;
+                          Navigator.pop(ctx);
+                          try {
+                            await _apiService.createMaterialRequest({
+                              'project_id': widget.project.id,
+                              'material_id': selectedMaterialId,
+                              'quantity': double.parse(quantityController.text),
+                              'remarks': remarksController.text,
+                              'requested_by': widget.user.id,
+                            });
+                            _loadData();
+                          } catch (e) {
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        child: Text('Request', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (selectedMaterialId == null || quantityController.text.isEmpty) return;
+                          Navigator.pop(ctx);
+                          try {
+                            final req = await _apiService.createMaterialRequest({
+                              'project_id': widget.project.id,
+                              'material_id': selectedMaterialId,
+                              'quantity': double.parse(quantityController.text),
+                              'status': 'received',
+                              'received_remarks': remarksController.text,
+                              'requested_by': widget.user.id,
+                            });
+                            if (photos.isNotEmpty) {
+                              await _apiService.uploadMaterialRequestMedia(req['id'], photos);
+                            }
+                            _loadData();
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Direct Receipt Logged! ✅'), backgroundColor: Colors.green));
+                          } catch (e) {
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                        child: Text('Log Receipt', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -241,6 +311,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   'name': nameController.text,
                   'unit': unitController.text,
                   'category': selectedCategory,
+                  'organization_id': widget.user.organizationId,
                 });
                 await _loadData(); // Re-fetch all materials
               } catch (e) {
@@ -300,7 +371,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
         onPressed: _showRequestDialog,
         backgroundColor: const Color(0xFF1E293B),
         icon: const Icon(Icons.add_shopping_cart, size: 20),
-        label: Text('Request Material', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        label: Text('Add Stock / Request', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -328,24 +399,178 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))]),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.category_outlined, color: Color(0xFF3B82F6)),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-              Text('Current Balance', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-            ])),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$qty', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: (double.tryParse(qty.toString()) ?? 0) < 10 ? Colors.red : Colors.black)),
-              Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ]),
-          ]),
+          child: Column(
+            children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.category_outlined, color: Color(0xFF3B82F6)),
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(name, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('Current Balance', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                ])),
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Text('$qty', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: (double.tryParse(qty.toString()) ?? 0) < 10 ? Colors.red : Colors.black)),
+                  Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ]),
+              ]),
+              if (!isOwner) ...[
+                const Divider(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () => _showLogUsageDialog(item, name, unit),
+                    icon: const Icon(Icons.remove_circle_outline, size: 18),
+                    label: const Text('Log Consumption', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B), padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       },
+    );
+  }
+
+  void _showLogUsageDialog(dynamic inventoryItem, String matName, String unit) {
+    final qtyController = TextEditingController();
+    final double availableQty = double.tryParse(inventoryItem['current_quantity'].toString()) ?? 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: EdgeInsets.only(left: 24, right: 24, top: 24, bottom: MediaQuery.of(ctx).viewInsets.bottom + 24),
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)))),
+              const SizedBox(height: 20),
+              
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Log Consumption', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
+                        Text(matName, style: GoogleFonts.outfit(color: const Color(0xFF64748B), fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+                    child: Column(
+                      children: [
+                        Text('Available', style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                        Text('$availableQty $unit', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Text('Quantity Used', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  hintText: '0.00',
+                  suffixText: unit,
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.remove_circle_outline, color: Color(0xFF64748B)),
+                ),
+                onChanged: (val) => setModalState(() {}), // Trigger rebuild to check validation
+              ),
+              
+              const SizedBox(height: 12),
+              
+              if (qtyController.text.isNotEmpty && (double.tryParse(qtyController.text) ?? 0) > availableQty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Insufficient Stock: You only have $availableQty $unit remaining.',
+                          style: GoogleFonts.outfit(color: const Color(0xFF991B1B), fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final useQty = double.tryParse(qtyController.text) ?? 0;
+                    if (useQty <= 0 || useQty > availableQty) return;
+                    
+                    Navigator.pop(ctx);
+                    try {
+                      await _apiService.logMaterialUsage({
+                        'project_id': widget.project.id,
+                        'material_id': inventoryItem['material_id'],
+                        'quantity': useQty,
+                        'logged_by': widget.user.id,
+                      });
+                      _loadData();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle, color: Colors.white),
+                                const SizedBox(width: 12),
+                                Text('Logged $useQty $unit used.', style: GoogleFonts.outfit()),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF10B981),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (double.tryParse(qtyController.text) ?? 0) > availableQty ? Colors.grey[300] : const Color(0xFF1E293B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text('Confirm Consumption', style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -565,7 +790,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                       if (photos.isNotEmpty) {
                         await _apiService.uploadMaterialRequestMedia(
                           requestId,
-                          photos.map((f) => f.path).toList(),
+                          photos,
                         );
                       }
                       _loadData();

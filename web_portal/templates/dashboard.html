@@ -31,6 +31,11 @@
     <div class="stat-label">Pending Transfers</div>
   </div>
   <div class="stat-card">
+    <div class="stat-icon" style="background:#E0F2FE">📝</div>
+    <div class="stat-value" style="color:#0369A1">{{ pending_requests }}</div>
+    <div class="stat-label">Pending Requests</div>
+  </div>
+  <div class="stat-card">
     <div class="stat-icon" style="background:#FEF2F2">🗑️</div>
     <div class="stat-value" style="color:#DC2626">{{ "%.0f"|format(total_waste) }}</div>
     <div class="stat-label">Total Waste (units)</div>
@@ -76,10 +81,11 @@
         {% for alert in low_stock %}
         <div class="alert-bar danger">
           <span>🚨</span>
-          <div>
+          <div style="flex:1">
             <strong>{{ alert.material }}</strong> at {{ alert.project }}<br>
-            <small>{{ alert.current }} {{ alert.unit }} left — min: {{ alert.min }}</small>
+            <small>{{ alert.current }} {{ alert.unit }} — min: {{ alert.min }}</small>
           </div>
+          <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:10px">{{ alert.reason }}</span>
         </div>
         {% endfor %}
       {% else %}

@@ -39,7 +39,7 @@ class _TasksScreenState extends State<TasksScreen> {
     try {
       final results = await Future.wait([
         _apiService.getProjectTasks(widget.project.id),
-        _apiService.getWorkTypes(),
+        _apiService.getWorkTypes(widget.user.organizationId!),
       ]);
 
       final tasks = results[0] as List<dynamic>;

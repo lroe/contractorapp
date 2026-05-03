@@ -34,21 +34,20 @@
 <!-- BOQ Summary Bar -->
 {% if boq_data %}
 {% set over_count = boq_data | selectattr('over_budget') | list | length %}
+{% set total_planned_exp = boq_data | map(attribute='planned_expenditure') | sum %}
+{% set total_actual_exp = boq_data | map(attribute='actual_expenditure') | sum %}
 <div style="display:flex;gap:12px;margin-bottom:20px">
   <div class="stat-card" style="flex:1">
-    <div class="stat-icon" style="background:#EFF6FF">📐</div>
-    <div class="stat-value" style="color:#2563EB">{{ boq_data|length }}</div>
-    <div class="stat-label">BOQ Items</div>
+    <div class="stat-label">Total Planned Exp.</div>
+    <div class="stat-value" style="color:#2563EB; font-size:20px">₹{{ "%.0f"|format(total_planned_exp) }}</div>
   </div>
   <div class="stat-card" style="flex:1">
-    <div class="stat-icon" style="background:#FEF2F2">🚨</div>
-    <div class="stat-value" style="color:#DC2626">{{ over_count }}</div>
-    <div class="stat-label">Over Budget</div>
+    <div class="stat-label">Total Actual Exp.</div>
+    <div class="stat-value" style="color:{{ '#DC2626' if total_actual_exp > total_planned_exp else '#10B981' }}; font-size:20px">₹{{ "%.0f"|format(total_actual_exp) }}</div>
   </div>
   <div class="stat-card" style="flex:1">
-    <div class="stat-icon" style="background:#F0FDF4">✅</div>
-    <div class="stat-value" style="color:#15803D">{{ boq_data|length - over_count }}</div>
-    <div class="stat-label">Within Budget</div>
+    <div class="stat-label">Over Budget Items</div>
+    <div class="stat-value" style="color:#DC2626; font-size:20px">{{ over_count }}</div>
   </div>
 </div>
 {% endif %}
@@ -60,7 +59,8 @@
     <thead>
       <tr>
         <th>Material</th><th>Unit</th><th>Planned</th><th>Actual Used</th>
-        <th>Variance</th><th>Variance %</th><th>Progress</th><th>Status</th>
+        <th>Unit Rate</th><th>Min Stock Alert</th><th>Actual Exp.</th>
+        <th>Variance %</th><th>Progress</th><th>Status</th>
       </tr>
     </thead>
     <tbody>
@@ -71,9 +71,9 @@
       <td>{{ item.unit }}</td>
       <td>{{ item.planned }}</td>
       <td>{{ "%.2f"|format(item.actual) }}</td>
-      <td class="{{ 'variance-over' if item.over_budget else 'variance-ok' }}">
-        {{ '+' if item.over_budget else '' }}{{ "%.2f"|format(item.variance) }}
-      </td>
+      <td>₹{{ "%.2f"|format(item.estimated_unit_price) }}</td>
+      <td><span style="color:var(--muted)">{{ item.min_stock_level }}</span></td>
+      <td style="font-weight:600">₹{{ "%.0f"|format(item.actual_expenditure) }}</td>
       <td class="{{ 'variance-over' if item.over_budget else 'variance-ok' }}">
         {{ '+' if item.over_budget else '' }}{{ item.variance_pct }}%
       </td>
@@ -120,9 +120,17 @@
           <input type="number" name="planned_quantity" step="0.01" min="0.01" placeholder="e.g. 500" required/>
         </div>
         <div class="form-group">
-          <label>Description</label>
-          <input type="text" name="description" placeholder="Optional note…"/>
+          <label>Unit Rate (₹) *</label>
+          <input type="number" name="estimated_unit_price" step="0.01" min="0.01" placeholder="Budgeted price per unit" required/>
         </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Min Stock Alert Level (Threshold)</label>
+        <input type="number" name="min_stock_level" step="0.01" placeholder="Alert if stock falls below this amount" value="0"/>
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Description / Usage Area</label>
+        <input type="text" name="description" placeholder="Optional note…"/>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="btn btn-ghost" onclick="closeModal('add-boq-modal')">Cancel</button>

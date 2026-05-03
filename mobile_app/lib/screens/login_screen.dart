@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   : _buildLoginButton('Login', const Color(0xFF1E293B), _handleLogin),
               const SizedBox(height: 24),
               const Text(
-                'Sample Credentials:\nOwner: 1234567890 / pass123\nSup 1: 1111111111 / pass123',
+                'Sample Credentials:\nOwner: 9000000001 / pass123\nSupervisor: 9000000005 / pass123',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
               ),

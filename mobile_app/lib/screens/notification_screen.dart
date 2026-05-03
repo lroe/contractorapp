@@ -30,6 +30,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     try {
       // Fetching more activity for the dedicated screen
       final data = await _apiService.getRecentActivity(
+        organizationId: widget.user.organizationId!,
         projectId: widget.selectedProject?.id,
         userId: widget.user.id,
       );

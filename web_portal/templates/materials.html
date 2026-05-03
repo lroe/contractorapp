@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Material Management{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Materials</div>
+    <div class="page-subtitle">Define and manage material types across the organization.</div>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('add-material-modal')">+ Add Material</button>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Unit</th>
+          <th>Category</th>
+          <th>Min Stock Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in materials %}
+        <tr>
+          <td><strong>{{ m.name }}</strong></td>
+          <td>{{ m.unit }}</td>
+          <td><span class="badge badge-ghost">{{ m.category or 'Uncategorized' }}</span></td>
+          <td>{{ m.min_stock_level }} {{ m.unit }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Material Modal -->
+<div class="modal-overlay" id="add-material-modal">
+  <div class="modal">
+    <div class="modal-title">New Material</div>
+    <form method="POST" action="{{ url_for('add_material_web') }}">
+      <div class="form-group">
+        <label>Material Name *</label>
+        <input type="text" name="name" placeholder="e.g. TMT Steel 12mm" required/>
+      </div>
+      <div class="form-grid cols-2">
+        <div class="form-group">
+          <label>Unit *</label>
+          <input type="text" name="unit" placeholder="e.g. kg, bag, ft" required/>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" name="category" placeholder="e.g. Steel, Cement"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Minimum Stock Level (Alert threshold)</label>
+        <input type="number" name="min_stock_level" step="0.01" value="0"/>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('add-material-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Material</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

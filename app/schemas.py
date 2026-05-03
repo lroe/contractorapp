@@ -4,8 +4,24 @@ from datetime import datetime, date
 from typing import Optional, List
 from decimal import Decimal
 
+# Organization Schemas
+class OrganizationBase(BaseModel):
+    name: str
+    subscription_status: str = "active"
+
+class OrganizationCreate(OrganizationBase):
+    pass
+
+class Organization(OrganizationBase):
+    id: UUID
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # User Schemas
 class UserBase(BaseModel):
+    organization_id: UUID
     name: str
     phone: str
     email: Optional[EmailStr] = None
@@ -18,12 +34,14 @@ class User(UserBase):
     id: UUID
     is_active: bool
     created_at: datetime
+    organization: Optional[Organization] = None
 
     class Config:
         from_attributes = True
 
 # Project Schemas
 class ProjectBase(BaseModel):
+    organization_id: UUID
     name: str
     code: Optional[str] = None
     start_date: Optional[date] = None
@@ -31,11 +49,10 @@ class ProjectBase(BaseModel):
     status: str = "active"
 
 class ProjectCreate(ProjectBase):
-    owner_id: UUID
+    pass
 
 class Project(ProjectBase):
     id: UUID
-    owner_id: UUID
     created_at: datetime
 
     class Config:
@@ -43,16 +60,16 @@ class Project(ProjectBase):
 
 # WorkType Schemas
 class WorkTypeBase(BaseModel):
+    organization_id: UUID
     name: str
     unit: Optional[str] = None
+    rate_per_unit: Optional[Decimal] = 0
 
 class WorkTypeCreate(WorkTypeBase):
     pass
 
 class WorkType(WorkTypeBase):
     id: UUID
-    created_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -75,12 +92,11 @@ class TaskCreate(TaskBase):
 class Task(TaskBase):
     id: UUID
     created_at: datetime
-    updated_at: datetime
 
     class Config:
         from_attributes = True
 
-# DPR Media Schemas
+# DPR Entry Schemas
 class DPRMediaBase(BaseModel):
     media_url: str
     media_type: str = "photo"
@@ -95,7 +111,6 @@ class DPRMedia(DPRMediaBase):
     class Config:
         from_attributes = True
 
-# DPR Entry Schemas
 class DPREntryBase(BaseModel):
     project_id: UUID
     supervisor_id: UUID
@@ -137,11 +152,48 @@ class Attendance(AttendanceBase):
     class Config:
         from_attributes = True
 
-# Material Schemas
+# Worker & Gang Schemas
+class WorkerBase(BaseModel):
+    organization_id: UUID
+    project_id: UUID
+    name: str
+    phone: Optional[str] = None
+    skill_type: Optional[str] = None
+    gang_id: Optional[UUID] = None
+    daily_rate: Decimal = 0
+
+class WorkerCreate(WorkerBase):
+    pass
+
+class Worker(WorkerBase):
+    id: UUID
+    is_active: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class GangBase(BaseModel):
+    organization_id: UUID
+    project_id: UUID
+    name: str
+    supervisor_id: Optional[UUID] = None
+
+class GangCreate(GangBase):
+    pass
+
+class Gang(GangBase):
+    id: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Material Management Schemas
 class MaterialBase(BaseModel):
+    organization_id: UUID
     name: str
     unit: str
     category: Optional[str] = None
+    min_stock_level: Optional[Decimal] = 0
 
 class MaterialCreate(MaterialBase):
     pass
@@ -159,147 +211,12 @@ class ProjectInventoryBase(BaseModel):
 class ProjectInventory(ProjectInventoryBase):
     id: UUID
     last_updated: datetime
-    material: Optional[Material] = None # For joined responses
+    material: Optional[Material] = None
     class Config:
         from_attributes = True
-
-class MaterialRequestMedia(BaseModel):
-    id: UUID
-    media_url: str
-    uploaded_at: datetime
-
-    class Config:
-        from_attributes = True
-
-class MaterialRequestBase(BaseModel):
-    project_id: UUID
-    material_id: UUID
-    quantity: Decimal
-    remarks: Optional[str] = None
-
-class MaterialRequestCreate(MaterialRequestBase):
-    requested_by: UUID
-
-class MaterialRequestUpdate(BaseModel):
-    status: str # pending, approved, rejected, received
-    remarks: Optional[str] = None
-    received_remarks: Optional[str] = None
-
-class MaterialRequest(MaterialRequestBase):
-    id: UUID
-    requested_by: UUID
-    status: str
-    received_remarks: Optional[str] = None
-    created_at: datetime
-    material: Optional[Material] = None # For joined responses
-    media: List[MaterialRequestMedia] = []
-    class Config:
-        from_attributes = True
-
-class MaterialUsageBase(BaseModel):
-    project_id: UUID
-    material_id: UUID
-    quantity: Decimal
-    dpr_entry_id: Optional[UUID] = None
-    usage_date: Optional[date] = None
-
-class MaterialUsageCreate(MaterialUsageBase):
-    logged_by: UUID
-
-class MaterialUsage(MaterialUsageBase):
-    id: UUID
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-class TransactionBase(BaseModel):
-    project_id: UUID
-    type: str
-    category: str
-    amount: Decimal
-    remarks: Optional[str] = None
-    transaction_date: Optional[date] = None
-
-class TransactionCreate(TransactionBase):
-    created_by: UUID
-
-class Transaction(TransactionBase):
-    id: UUID
-    receipt_url: Optional[str] = None
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-# Worker & Gang Schemas
-class WorkerBase(BaseModel):
-    project_id: UUID
-    name: str
-    phone: Optional[str] = None
-    skill_type: Optional[str] = None
-    gang_id: Optional[UUID] = None
-
-class WorkerCreate(WorkerBase):
-    pass
-
-class Worker(WorkerBase):
-    id: UUID
-    is_active: bool
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-class GangBase(BaseModel):
-    project_id: UUID
-    name: str
-    supervisor_id: Optional[UUID] = None
-
-class GangCreate(GangBase):
-    pass
-
-class Gang(GangBase):
-    id: UUID
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-class AttendanceBase(BaseModel):
-    project_id: UUID
-    worker_id: UUID
-    gang_id: Optional[UUID] = None
-    entry_date: date
-    status: str # present, absent, half_day
-
-class AttendanceCreate(AttendanceBase):
-    marked_by: UUID
-
-class Attendance(AttendanceBase):
-    id: UUID
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-# Project Document Schemas
-class ProjectDocumentBase(BaseModel):
-    project_id: UUID
-    name: str
-    file_type: Optional[str] = None
-
-class ProjectDocumentCreate(ProjectDocumentBase):
-    file_url: str
-    uploaded_by: UUID
-
-class ProjectDocument(ProjectDocumentBase):
-    id: UUID
-    file_url: str
-    uploaded_by: UUID
-    uploaded_at: datetime
-
-    class Config:
-        from_attributes = True
-
-# ─── Vendor Schemas ────────────────────────────────────────────────────────────
 
 class VendorBase(BaseModel):
+    organization_id: UUID
     name: str
     phone: Optional[str] = None
     email: Optional[str] = None
@@ -333,8 +250,6 @@ class VendorPrice(VendorPriceBase):
     class Config:
         from_attributes = True
 
-# ─── Purchase Order Schemas ────────────────────────────────────────────────────
-
 class PurchaseOrderItemBase(BaseModel):
     material_id: UUID
     quantity: Decimal
@@ -351,6 +266,7 @@ class PurchaseOrderItem(PurchaseOrderItemBase):
         from_attributes = True
 
 class PurchaseOrderBase(BaseModel):
+    organization_id: UUID
     project_id: UUID
     vendor_id: UUID
     expected_delivery: Optional[date] = None
@@ -377,8 +293,6 @@ class PurchaseOrderStatusUpdate(BaseModel):
     status: str
     approved_by: Optional[UUID] = None
 
-# ─── Stock Ledger ──────────────────────────────────────────────────────────────
-
 class StockLedgerEntry(BaseModel):
     id: UUID
     project_id: UUID
@@ -391,25 +305,6 @@ class StockLedgerEntry(BaseModel):
     material: Optional[Material] = None
     class Config:
         from_attributes = True
-
-# ─── BOQ Schemas ───────────────────────────────────────────────────────────────
-
-class BOQItemBase(BaseModel):
-    project_id: UUID
-    material_id: UUID
-    planned_quantity: Decimal
-    description: Optional[str] = None
-
-class BOQItemCreate(BOQItemBase):
-    pass
-
-class BOQItem(BOQItemBase):
-    id: UUID
-    material: Optional[Material] = None
-    class Config:
-        from_attributes = True
-
-# ─── Transfer Note Schemas ─────────────────────────────────────────────────────
 
 class TransferNoteBase(BaseModel):
     from_project_id: UUID
@@ -430,7 +325,41 @@ class TransferNote(TransferNoteBase):
     class Config:
         from_attributes = True
 
-# ─── Waste Log Schemas ─────────────────────────────────────────────────────────
+class BOQItemBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    planned_quantity: Decimal
+    estimated_unit_price: Decimal = 0
+    min_stock_level: Decimal = 0
+    description: Optional[str] = None
+
+class BOQItemCreate(BOQItemBase):
+    pass
+
+class BOQItem(BOQItemBase):
+    id: UUID
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# Transaction Schemas
+class TransactionBase(BaseModel):
+    project_id: UUID
+    type: str  # INCOME / EXPENSE
+    category: str
+    amount: Decimal
+    description: Optional[str] = None
+    transaction_date: Optional[date] = None
+
+class TransactionCreate(TransactionBase):
+    created_by: UUID
+
+class Transaction(TransactionBase):
+    id: UUID
+    created_by: UUID
+    created_at: datetime
+    class Config:
+        from_attributes = True
 
 class WasteLogBase(BaseModel):
     project_id: UUID
@@ -446,5 +375,70 @@ class WasteLog(WasteLogBase):
     id: UUID
     created_at: datetime
     material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+class ProjectDocumentBase(BaseModel):
+    project_id: UUID
+    file_name: str
+    file_url: str
+
+class ProjectDocumentCreate(ProjectDocumentBase):
+    uploaded_by: UUID
+
+class ProjectDocument(ProjectDocumentBase):
+    id: UUID
+    uploaded_by: UUID
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Material Request Schemas
+class MaterialRequestMediaBase(BaseModel):
+    media_url: str
+
+class MaterialRequestMedia(MaterialRequestMediaBase):
+    id: UUID
+    uploaded_at: datetime
+    class Config:
+        from_attributes = True
+
+class MaterialRequestBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    remarks: Optional[str] = None
+    status: str = "pending"
+
+class MaterialRequestCreate(MaterialRequestBase):
+    requested_by: UUID
+    received_remarks: Optional[str] = None
+
+class MaterialRequest(MaterialRequestBase):
+    id: UUID
+    requested_by: UUID
+    received_remarks: Optional[str] = None
+    created_at: datetime
+    media: List[MaterialRequestMedia] = []
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# Material Usage Schemas
+class MaterialUsageBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    usage_date: Optional[date] = None
+
+class MaterialUsageCreate(MaterialUsageBase):
+    logged_by: UUID
+    dpr_entry_id: Optional[UUID] = None
+
+class MaterialUsage(MaterialUsageBase):
+    id: UUID
+    logged_by: UUID
+    created_at: datetime
     class Config:
         from_attributes = True

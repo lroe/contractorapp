@@ -153,6 +153,8 @@ tr:hover td { background: #FAFBFC; }
 .badge-wastage   { background: #FEF3C7; color: #92400E; }
 .badge-transfer_in  { background: #EDE9FE; color: #6D28D9; }
 .badge-transfer_out { background: #FCE7F3; color: #9D174D; }
+.badge-consumption { background: #FEE2E2; color: #B91C1C; }
+.badge-adjustment  { background: #F1F5F9; color: #475569; }
 
 /* ─── Buttons ───────────────────────────────────────────────────────────────── */
 .btn {
@@ -193,17 +195,19 @@ input:focus, select:focus, textarea:focus {
 
 /* ─── Modal / Drawer ─────────────────────────────────────────────────────────── */
 .modal-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
-  z-index: 200; align-items: flex-end; justify-content: center;
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 200; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
 }
 .modal-overlay.open { display: flex; }
 .modal {
-  background: var(--surface); border-radius: 20px 20px 0 0;
-  padding: 28px; width: 100%; max-width: 640px;
+  background: var(--surface); border-radius: 20px;
+  padding: 32px; width: 100%; max-width: 580px;
   max-height: 90vh; overflow-y: auto;
-  animation: slideUp .22s ease;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: modalIn .2s ease-out;
 }
-@keyframes slideUp { from { transform: translateY(40px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+@keyframes modalIn { from { transform: scale(0.95); opacity:0; } to { transform: scale(1); opacity:1; } }
 .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
 
 /* ─── Progress bar ───────────────────────────────────────────────────────────── */

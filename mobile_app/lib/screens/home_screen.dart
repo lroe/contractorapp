@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadAssignedProjects() async {
     setState(() => _isLoadingProjects = true);
     try {
-      final projects = await _apiService.getProjectsForUser(_currentUser!.id);
+      final projects = await _apiService.getProjects(_currentUser!.organizationId!, userId: _currentUser!.id);
       setState(() {
         _assignedProjects = projects;
         if (_assignedProjects.isNotEmpty) {
@@ -216,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatsRow(bool isOwner) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: _apiService.getDashboardStats(_currentUser!.id, projectId: _selectedProject?.id),
+      future: _apiService.getDashboardStats(_currentUser!.organizationId!, _currentUser!.id, projectId: _selectedProject?.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting && !_isLoadingProjects) {
           // Show placeholders or keep old values
@@ -349,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         _buildActionCard(
           context,
-          'Inventory',
+          'Procure/Stock',
           Icons.inventory_2_outlined,
           const Color(0xFFEC4899),
           () => Navigator.push(
@@ -477,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         _buildActionCard(
           context,
-          'Inventory',
+          'Procure/Stock',
           Icons.inventory_2_outlined,
           const Color(0xFFEC4899),
           () {
@@ -541,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         FutureBuilder<List<dynamic>>(
-          future: _apiService.getRecentActivity(projectId: projectId, userId: _currentUser!.id),
+          future: _apiService.getRecentActivity(organizationId: _currentUser!.organizationId!, projectId: projectId, userId: _currentUser!.id),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

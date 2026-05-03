@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
@@ -53,11 +54,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             onPressed: () async {
               if (nameController.text.isEmpty) return;
               Navigator.pop(ctx);
+              if (widget.user.organizationId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: User not associated with any organization')));
+                return;
+              }
               try {
                 await _apiService.createGang({
                   'name': nameController.text,
                   'project_id': widget.project.id,
                   'supervisor_id': widget.user.id,
+                  'organization_id': widget.user.organizationId,
                 });
                 _loadGangs();
               } catch (e) {
@@ -163,7 +169,7 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
       final now = DateTime.now();
       final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
       
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _apiService.getWorkers(widget.gang['id']),
         _apiService.getGangAttendance(widget.gang['id'], dateStr),
       ]);
@@ -197,6 +203,7 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
   void _showAddWorkerDialog() {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
+    final rateController = TextEditingController(text: '500');
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -206,6 +213,7 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
           children: [
             TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Worker Name')),
             TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Phone (Optional)'), keyboardType: TextInputType.phone),
+            TextField(controller: rateController, decoration: const InputDecoration(labelText: 'Daily Rate (₹)'), keyboardType: TextInputType.number),
           ],
         ),
         actions: [
@@ -214,12 +222,18 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
             onPressed: () async {
               if (nameController.text.isEmpty) return;
               Navigator.pop(ctx);
+              if (widget.user.organizationId == null) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: User not associated with any organization')));
+                return;
+              }
               try {
                 await _apiService.createWorker({
                   'name': nameController.text,
                   'phone': phoneController.text,
+                  'daily_rate': double.tryParse(rateController.text) ?? 0,
                   'project_id': widget.project.id,
                   'gang_id': widget.gang['id'],
+                  'organization_id': widget.user.organizationId,
                 });
                 _loadWorkers();
               } catch (e) {
