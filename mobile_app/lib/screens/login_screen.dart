@@ -26,11 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await _apiService.login(_phoneController.text, _passwordController.text);
       if (!mounted) return;
-      if (user.role == 'material_manager') {
-        Navigator.pushReplacementNamed(context, '/material-manager', arguments: user);
-      } else {
-        Navigator.pushReplacementNamed(context, '/home', arguments: user);
-      }
+      Navigator.pushReplacementNamed(context, '/home', arguments: user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
