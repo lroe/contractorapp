@@ -288,7 +288,7 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
                       children: [
                         if (_groupPhoto != null)
                           Container(
-                            margin: const EdgeInsets.bottom(16),
+                            margin: const EdgeInsets.only(bottom: 16),
                             height: 120,
                             width: double.infinity,
                             decoration: BoxDecoration(
