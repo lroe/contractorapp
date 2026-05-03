@@ -152,6 +152,15 @@ class Attendance(AttendanceBase):
     class Config:
         from_attributes = True
 
+class AttendancePhoto(BaseModel):
+    id: UUID
+    gang_id: UUID
+    entry_date: date
+    photo_url: str
+    uploaded_at: datetime
+    class Config:
+        from_attributes = True
+
 # Worker & Gang Schemas
 class WorkerBase(BaseModel):
     organization_id: UUID

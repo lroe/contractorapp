@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from sqlalchemy import func
 from app.database import SessionLocal
 from app import models
@@ -12,6 +12,11 @@ import uuid
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return send_from_directory(os.path.join(root_dir, 'uploads'), filename)
 
 # ─── DB Helpers ───────────────────────────────────────────────────────────────
 def get_db():
@@ -837,6 +842,119 @@ def _log_stock(db, project_id, material_id, movement_type, quantity):
         inv.current_quantity = float(inv.current_quantity) + sign * quantity
     else:
         db.add(models.ProjectInventory(project_id=project_id, material_id=material_id, current_quantity=sign * quantity))
+
+# ─── Attendance ───────────────────────────────────────────────────────────────
+@app.route('/attendance')
+@login_required
+def attendance():
+    db = get_db()
+    org_id = uuid.UUID(session['organization_id'])
+    user_id = session['user_id']
+    user_role = session['user_role']
+    
+    projects = get_authorized_projects(db, org_id, user_id, user_role)
+    project_id = request.args.get('project_id')
+    entry_date_str = request.args.get('date', date.today().isoformat())
+    entry_date = date.fromisoformat(entry_date_str)
+
+    summary = []
+    daily_photos = []
+    
+    if project_id:
+        proj_id = uuid.UUID(project_id)
+        # Get daily summary for this project and date
+        attendance_records = db.query(
+            models.Worker.name,
+            models.Worker.daily_rate,
+            models.Attendance.status,
+            models.Gang.name.label("gang_name")
+        ).join(
+            models.Attendance, models.Worker.id == models.Attendance.worker_id
+        ).outerjoin(
+            models.Gang, models.Worker.gang_id == models.Gang.id
+        ).filter(
+            models.Attendance.project_id == proj_id,
+            models.Attendance.entry_date == entry_date
+        ).all()
+        
+        summary = [
+            {
+                "worker_name": r.name,
+                "rate": float(r.daily_rate or 0),
+                "status": r.status,
+                "gang": r.gang_name,
+                "cost": float(r.daily_rate or 0) * (1.0 if r.status == 'present' else 0.5 if r.status == 'half_day' else 0.0)
+            } for r in attendance_records
+        ]
+        
+        # Get photos with gang names for this project/date
+        daily_photos_raw = db.query(
+            models.AttendancePhoto.photo_url,
+            models.AttendancePhoto.uploaded_at,
+            models.Gang.name.label("gang_name")
+        ).join(models.Gang).filter(
+            models.Gang.project_id == proj_id,
+            models.AttendancePhoto.entry_date == entry_date
+        ).all()
+        
+        daily_photos = [
+            {
+                "url": p.photo_url,
+                "gang_name": p.gang_name,
+                "time": p.uploaded_at
+            } for p in daily_photos_raw
+        ]
+
+    close_db(db)
+    return render_template('attendance.html', 
+                         projects=projects, 
+                         selected_project_id=project_id,
+                         selected_date=entry_date_str,
+                         summary=summary,
+                         photos=daily_photos)
+
+# ─── Documents ───────────────────────────────────────────────────────────────
+@app.route('/documents', methods=['GET', 'POST'])
+@login_required
+def documents():
+    db = get_db()
+    org_id = uuid.UUID(session['organization_id'])
+    user_id = session['user_id']
+    user_role = session['user_role']
+    
+    projects = get_authorized_projects(db, org_id, user_id, user_role)
+    project_id = request.args.get('project_id')
+    
+    if request.method == 'POST':
+        proj_id_form = request.form.get('project_id')
+        title = request.form.get('title')
+        category = request.form.get('category')
+        file = request.files.get('file')
+        
+        if file and proj_id_form:
+            upload_dir = f"uploads/documents/{proj_id_form}"
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, file.filename)
+            file.save(file_path)
+            
+            new_doc = models.Document(
+                project_id=uuid.UUID(proj_id_form),
+                title=title,
+                category=category,
+                file_url=f"/{file_path}",
+                uploaded_by=uuid.UUID(user_id)
+            )
+            db.add(new_doc)
+            db.commit()
+            flash('Document uploaded successfully.', 'success')
+            return redirect(url_for('documents', project_id=proj_id_form))
+
+    docs = []
+    if project_id:
+        docs = db.query(models.Document).filter(models.Document.project_id == uuid.UUID(project_id)).all()
+        
+    close_db(db)
+    return render_template('documents.html', projects=projects, selected_project_id=project_id, documents=docs)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)

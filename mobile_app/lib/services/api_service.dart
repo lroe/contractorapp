@@ -328,4 +328,12 @@ class ApiService {
     }
     throw Exception('Failed to load project supervisors');
   }
+  Future<void> uploadAttendancePhoto(String gangId, String date, String imagePath) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/gangs/$gangId/attendance/photo/'));
+    request.fields['entry_date'] = date;
+    request.files.add(await http.MultipartFile.fromPath('file', imagePath));
+
+    var response = await request.send();
+    if (response.statusCode != 200) throw Exception('Failed to upload attendance photo');
+  }
 }

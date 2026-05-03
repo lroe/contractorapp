@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Workforce & Attendance - Contractor DB{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Workforce & Attendance</h1>
+        <p>Monitor daily man-days, labor costs, and visual attendance records.</p>
+    </div>
+</div>
+
+<div class="card search-card">
+    <form method="GET" class="filter-row">
+        <div class="form-group">
+            <label>Select Project</label>
+            <select name="project_id" onchange="this.form.submit()">
+                <option value="">-- Choose Project --</option>
+                {% for p in projects %}
+                <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Select Date</label>
+            <input type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
+        </div>
+    </form>
+</div>
+
+{% if selected_project_id %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Man-Days</h3>
+            <p class="stat-value">
+                {% set total_man_days = summary | map(attribute='status') | select('equalto', 'present') | list | length + (summary | map(attribute='status') | select('equalto', 'half_day') | list | length * 0.5) %}
+                {{ total_man_days }}
+            </p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Labor Cost</h3>
+            <p class="stat-value">₹{{ summary | sum(attribute='cost') | round(2) }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Headcount</h3>
+            <p class="stat-value">{{ summary | length }}</p>
+        </div>
+    </div>
+
+    {% if photos %}
+    <div class="card">
+        <h2>Daily Gang Photos</h2>
+        <div class="photo-grid">
+            {% for photo in photos %}
+            <div class="photo-item">
+                <img src="{{ photo.url }}" alt="Gang Photo" onclick="window.open(this.src)">
+                <p><strong>{{ photo.gang_name }}</strong><br><small>{{ photo.time.strftime('%H:%M %p') }}</small></p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2>Attendance Ledger ({{ selected_date }})</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Worker Name</th>
+                    <th>Gang</th>
+                    <th>Status</th>
+                    <th>Daily Rate</th>
+                    <th>Cost Allocation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary %}
+                <tr>
+                    <td><strong>{{ row.worker_name }}</strong></td>
+                    <td>{{ row.gang or '-' }}</td>
+                    <td>
+                        <span class="badge {% if row.status == 'present' %}badge-success{% elif row.status == 'half_day' %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ row.status | upper }}
+                        </span>
+                    </td>
+                    <td>₹{{ row.rate }}</td>
+                    <td>₹{{ row.cost }}</td>
+                </tr>
+                {% endfor %}
+                {% if not summary %}
+                <tr>
+                    <td colspan="5" class="text-center">No attendance records found for this date.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+        <h3>Please select a project to view attendance data.</h3>
+    </div>
+{% endif %}
+
+<style>
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+    }
+    .photo-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .photo-item img:hover {
+        transform: scale(1.05);
+    }
+    .badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .badge-success { background: #DCFCE7; color: #166534; }
+    .badge-warning { background: #FEF9C3; color: #854D0E; }
+    .badge-danger { background: #FEE2E2; color: #991B1B; }
+</style>
+{% endblock %}

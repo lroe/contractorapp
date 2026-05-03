@@ -168,6 +168,18 @@ class Attendance(Base):
         CheckConstraint(status.in_(['present', 'absent', 'half_day']), name='attendance_status_check'),
     )
 
+class AttendancePhoto(Base):
+    __tablename__ = "attendance_photos"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    gang_id = Column(UUID(as_uuid=True), ForeignKey("gangs.id", ondelete="CASCADE"), index=True)
+    entry_date = Column(Date, nullable=False, index=True)
+    photo_url = Column(Text, nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('gang_id', 'entry_date', name='_gang_attendance_photo_uc'),
+    )
+
 # ─── Material Management ──────────────────────────────────────────────────────
 
 class Material(Base):

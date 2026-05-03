@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
@@ -156,6 +158,15 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
   List<dynamic> _workers = [];
   bool _isLoading = true;
   final Map<String, String> _attendanceMap = {}; // workerId -> status
+  XFile? _groupPhoto;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickPhoto() async {
+    final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+    if (photo != null) {
+      setState(() => _groupPhoto = photo);
+    }
+  }
 
   @override
   void initState() {
@@ -272,11 +283,57 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
                 ),
                 if (_workers.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: ElevatedButton(
-                      onPressed: _saveAttendance,
-                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 56), backgroundColor: const Color(0xFF1E293B), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                      child: Text('Submit Attendance', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Column(
+                      children: [
+                        if (_groupPhoto != null)
+                          Container(
+                            margin: const EdgeInsets.bottom(16),
+                            height: 120,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              image: DecorationImage(
+                                image: FileImage(File(_groupPhoto!.path)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: IconButton(
+                                    onPressed: () => setState(() => _groupPhoto = null),
+                                    icon: const Icon(Icons.close, color: Colors.white),
+                                    style: IconButton.styleFrom(backgroundColor: Colors.black54),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          OutlinedButton.icon(
+                            onPressed: _pickPhoto,
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            label: const Text('Take Group Photo'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _saveAttendance,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 56),
+                            backgroundColor: const Color(0xFF1E293B),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: Text('Submit Attendance', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -334,6 +391,14 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
           'status': entry.value,
           'marked_by': widget.user.id,
         });
+      }
+
+      if (_groupPhoto != null) {
+        await _apiService.uploadAttendancePhoto(
+          widget.gang['id'],
+          dateStr,
+          _groupPhoto!.path,
+        );
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance submitted successfully!')));

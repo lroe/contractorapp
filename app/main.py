@@ -244,6 +244,39 @@ def get_gang_attendance(gang_id: uuid.UUID, entry_date: date, db: Session = Depe
         models.Attendance.gang_id == gang_id,
         models.Attendance.entry_date == entry_date
     ).all()
+
+@app.post("/gangs/{gang_id}/attendance/photo/")
+async def upload_attendance_photo(
+    gang_id: uuid.UUID,
+    entry_date: date = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    upload_dir = f"uploads/attendance/{gang_id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_path = os.path.join(upload_dir, f"{entry_date}_{file.filename}")
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    db_photo = models.AttendancePhoto(
+        gang_id=gang_id,
+        entry_date=entry_date,
+        photo_url=f"/{file_path}"
+    )
+    
+    # Remove existing photo for same day/gang if exists
+    existing = db.query(models.AttendancePhoto).filter(
+        models.AttendancePhoto.gang_id == gang_id,
+        models.AttendancePhoto.entry_date == entry_date
+    ).first()
+    if existing:
+        db.delete(existing)
+        
+    db.add(db_photo)
+    db.commit()
+    db.refresh(db_photo)
+    return db_photo
 @app.get("/materials/", response_model=List[schemas.Material])
 def read_materials(organization_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_materials(db, organization_id)
