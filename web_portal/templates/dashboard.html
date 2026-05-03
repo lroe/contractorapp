@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Good day, {{ session.user_name }} 👋</div>
+    <div class="page-subtitle">Here's a live overview of your materials operation.</div>
+  </div>
+</div>
+
+<!-- Stat Grid -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#FEF3C7">📋</div>
+    <div class="stat-value" style="color:#D97706">{{ pending_pos }}</div>
+    <div class="stat-label">Pending POs</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#EFF6FF">🏢</div>
+    <div class="stat-value" style="color:#2563EB">{{ active_vendors }}</div>
+    <div class="stat-label">Active Vendors</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#F0FDF4">📦</div>
+    <div class="stat-value" style="color:#15803D">{{ total_materials }}</div>
+    <div class="stat-label">Materials</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#EDE9FE">🔄</div>
+    <div class="stat-value" style="color:#7C3AED">{{ pending_transfers }}</div>
+    <div class="stat-label">Pending Transfers</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:#FEF2F2">🗑️</div>
+    <div class="stat-value" style="color:#DC2626">{{ "%.0f"|format(total_waste) }}</div>
+    <div class="stat-label">Total Waste (units)</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- Recent POs -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Purchase Orders</span>
+      <a href="{{ url_for('purchase_orders') }}" class="btn btn-ghost btn-sm">View All →</a>
+    </div>
+    {% if recent_pos %}
+    <div class="table-wrap" style="border:none;border-radius:0">
+      <table>
+        <thead><tr><th>PO #</th><th>Vendor</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for po in recent_pos %}
+        <tr>
+          <td><strong>{{ po.po_number or 'Draft' }}</strong></td>
+          <td>{{ po.vendor.name if po.vendor else '—' }}</td>
+          <td>₹{{ "%.0f"|format(po.total_amount|float) }}</td>
+          <td><span class="badge badge-{{ po.status }}">{{ po.status }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="icon">📋</div><h3>No purchase orders yet</h3></div>
+    {% endif %}
+  </div>
+
+  <!-- Low Stock Alerts -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⚠️ Low Stock Alerts</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:8px">
+      {% if low_stock %}
+        {% for alert in low_stock %}
+        <div class="alert-bar danger">
+          <span>🚨</span>
+          <div>
+            <strong>{{ alert.material }}</strong> at {{ alert.project }}<br>
+            <small>{{ alert.current }} {{ alert.unit }} left — min: {{ alert.min }}</small>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state" style="padding:30px">
+          <div class="icon">✅</div>
+          <h3>All stock levels are healthy</h3>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

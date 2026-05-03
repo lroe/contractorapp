@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Transfers{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Inter-site Transfers</div>
+    <div class="page-subtitle">Move materials between sites and track chain of custody.</div>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('create-transfer-modal')">+ Create Transfer Note</button>
+</div>
+
+<!-- Transfers List -->
+{% if transfers %}
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th><th>From Site</th><th>To Site</th>
+        <th>Material</th><th>Quantity</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in transfers %}
+    <tr>
+      <td style="color:var(--muted);font-size:12px">{{ t.created_at.strftime('%Y-%m-%d') if t.created_at else '—' }}</td>
+      <td><strong>{{ t.from_project.name if t.from_project else '—' }}</strong></td>
+      <td><strong>{{ t.to_project.name if t.to_project else '—' }}</strong></td>
+      <td>{{ t.material.name if t.material else '—' }}</td>
+      <td>{{ t.quantity }} {{ t.material.unit if t.material else '' }}</td>
+      <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
+      <td>
+        {% if t.status == 'pending' %}
+        <form method="POST" action="{{ url_for('receive_transfer', transfer_id=t.id) }}">
+          <button class="btn btn-green btn-sm" type="submit" onclick="return confirm('Confirm delivery of {{ t.quantity }} to {{ t.to_project.name }}?')">Receive Stock</button>
+        </form>
+        {% else %}
+        <span style="font-size:12px;color:var(--muted)">Confirmed</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state"><div class="icon">🚛</div><h3>No transfers initiated</h3><p>Click "+ Create Transfer Note" to move stock between sites.</p></div>
+</div>
+{% endif %}
+
+<!-- Create Transfer Modal -->
+<div class="modal-overlay" id="create-transfer-modal">
+  <div class="modal">
+    <div class="modal-title">Create Transfer Note</div>
+    <form method="POST" action="{{ url_for('create_transfer') }}">
+
+      <div class="form-grid cols-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Source Site (From) *</label>
+          <select name="from_project_id" required>
+            <option value="">Select source…</option>
+            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Destination Site (To) *</label>
+          <select name="to_project_id" required>
+            <option value="">Select destination…</option>
+            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid cols-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Material *</label>
+          <select name="material_id" required>
+            <option value="">Select material…</option>
+            {% for m in materials %}<option value="{{ m.id }}">{{ m.name }} ({{ m.unit }})</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantity to Transfer *</label>
+          <input type="number" name="quantity" min="0.01" step="0.01" placeholder="e.g. 50" required/>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Remarks</label>
+        <input type="text" name="remarks" placeholder="Optional notes…"/>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('create-transfer-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Initiate Transfer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

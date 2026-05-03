@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Vendor Prices{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Price Comparisons: {{ material.name }}</div>
+    <div class="page-subtitle">Unit: {{ material.unit }}</div>
+  </div>
+  <a href="{{ url_for('vendors') }}" class="btn btn-ghost">← Back to Vendors</a>
+</div>
+
+<div class="card">
+  <div class="card-header"><span class="card-title">Vendor Pricing</span></div>
+  {% if prices %}
+  <div class="table-wrap" style="border:none;border-radius:0">
+    <table>
+      <thead><tr><th>Vendor</th><th>Price (₹)</th><th>Notes</th><th>Logged On</th></tr></thead>
+      <tbody>
+      {% for p in prices %}
+      <tr>
+        <td><strong>{{ p.vendor.name if p.vendor else '—' }}</strong></td>
+        <td>
+          <span style="font-weight:700;color:{{ '#10B981' if loop.first else 'inherit' }}">
+            ₹{{ "%.2f"|format(p.price_per_unit) }}
+          </span>
+          {% if loop.first %}<span class="badge badge-received" style="margin-left:8px;font-size:9px">Lowest</span>{% endif %}
+        </td>
+        <td>{{ p.notes or '—' }}</td>
+        <td style="color:var(--muted);font-size:12px">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="icon">💰</div><h3>No prices logged</h3><p>Log a price on the Vendors page.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

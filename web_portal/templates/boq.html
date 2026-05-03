@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}BOQ Tracker{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">BOQ Tracker</div>
+    <div class="page-subtitle">Compare planned vs. actual material consumption per project.</div>
+  </div>
+  {% if selected_id %}
+  <button class="btn btn-primary" onclick="openModal('add-boq-modal')">+ Set Planned Qty</button>
+  {% endif %}
+</div>
+
+<!-- Project Selector -->
+<div class="card" style="margin-bottom:20px">
+  <div class="card-body">
+    <form method="GET">
+      <div style="display:flex;gap:12px;align-items:flex-end">
+        <div class="form-group" style="flex:1">
+          <label>Select Project</label>
+          <select name="project_id" onchange="this.form.submit()">
+            <option value="">Choose a project…</option>
+            {% for p in projects %}
+            <option value="{{ p.id }}" {% if selected_id == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if selected_project %}
+<!-- BOQ Summary Bar -->
+{% if boq_data %}
+{% set over_count = boq_data | selectattr('over_budget') | list | length %}
+<div style="display:flex;gap:12px;margin-bottom:20px">
+  <div class="stat-card" style="flex:1">
+    <div class="stat-icon" style="background:#EFF6FF">📐</div>
+    <div class="stat-value" style="color:#2563EB">{{ boq_data|length }}</div>
+    <div class="stat-label">BOQ Items</div>
+  </div>
+  <div class="stat-card" style="flex:1">
+    <div class="stat-icon" style="background:#FEF2F2">🚨</div>
+    <div class="stat-value" style="color:#DC2626">{{ over_count }}</div>
+    <div class="stat-label">Over Budget</div>
+  </div>
+  <div class="stat-card" style="flex:1">
+    <div class="stat-icon" style="background:#F0FDF4">✅</div>
+    <div class="stat-value" style="color:#15803D">{{ boq_data|length - over_count }}</div>
+    <div class="stat-label">Within Budget</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- BOQ Table -->
+<div class="table-wrap card">
+  {% if boq_data %}
+  <table>
+    <thead>
+      <tr>
+        <th>Material</th><th>Unit</th><th>Planned</th><th>Actual Used</th>
+        <th>Variance</th><th>Variance %</th><th>Progress</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for item in boq_data %}
+    {% set pct = [[(item.actual / item.planned * 100) if item.planned > 0 else 0, 0]|max, 100]|min %}
+    <tr>
+      <td><strong>{{ item.material }}</strong></td>
+      <td>{{ item.unit }}</td>
+      <td>{{ item.planned }}</td>
+      <td>{{ "%.2f"|format(item.actual) }}</td>
+      <td class="{{ 'variance-over' if item.over_budget else 'variance-ok' }}">
+        {{ '+' if item.over_budget else '' }}{{ "%.2f"|format(item.variance) }}
+      </td>
+      <td class="{{ 'variance-over' if item.over_budget else 'variance-ok' }}">
+        {{ '+' if item.over_budget else '' }}{{ item.variance_pct }}%
+      </td>
+      <td style="min-width:120px">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar"
+               style="width:{{ pct }}%;background:{{ '#EF4444' if item.over_budget else '#10B981' }}">
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">{{ "%.0f"|format(pct) }}% used</div>
+      </td>
+      <td>
+        <span class="badge {{ 'badge-over' if item.over_budget else 'badge-ok' }}">
+          {{ '⚠ Over Budget' if item.over_budget else '✓ On Track' }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state"><div class="icon">📐</div><h3>No BOQ items set</h3>
+    <p>Click "+ Set Planned Qty" to add planned quantities for this project.</p></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Add BOQ Modal -->
+<div class="modal-overlay" id="add-boq-modal">
+  <div class="modal">
+    <div class="modal-title">Set Planned Quantity (BOQ)</div>
+    <form method="POST" action="{{ url_for('add_boq') }}">
+      <input type="hidden" name="project_id" value="{{ selected_id }}"/>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Material *</label>
+        <select name="material_id" required>
+          <option value="">Select material…</option>
+          {% for m in materials %}<option value="{{ m.id }}">{{ m.name }} ({{ m.unit }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-grid cols-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label>Planned Quantity *</label>
+          <input type="number" name="planned_quantity" step="0.01" min="0.01" placeholder="e.g. 500" required/>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" name="description" placeholder="Optional note…"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('add-boq-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
