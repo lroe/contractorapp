@@ -854,6 +854,8 @@ def attendance():
     
     projects = get_authorized_projects(db, org_id, user_id, user_role)
     project_id = request.args.get('project_id')
+    if not project_id and projects:
+        project_id = str(projects[0].id)
     entry_date_str = request.args.get('date', date.today().isoformat())
     entry_date = date.fromisoformat(entry_date_str)
 
@@ -924,6 +926,8 @@ def documents():
     
     projects = get_authorized_projects(db, org_id, user_id, user_role)
     project_id = request.args.get('project_id')
+    if not project_id and projects:
+        project_id = str(projects[0].id)
     
     if request.method == 'POST':
         proj_id_form = request.form.get('project_id')

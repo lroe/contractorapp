@@ -64,6 +64,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .nav-item svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
 .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
 .nav-item.active { background: var(--sidebar-active); color: var(--sidebar-text-active); }
+.nav-divider { height: 1px; background: rgba(255,255,255,.08); margin: 8px 16px; }
 
 .sidebar-footer {
   display: flex; align-items: center; justify-content: space-between;

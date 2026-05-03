@@ -8,15 +8,16 @@
         <h1>Project Documents</h1>
         <p>Upload and manage site plans, safety certificates, and legal documents.</p>
     </div>
-    <button class="btn btn-primary" onclick="toggleUploadForm()">+ Upload Document</button>
+    {% if selected_project_id %}
+    <button class="btn btn-primary" onclick="document.getElementById('uploadSection').style.display = document.getElementById('uploadSection').style.display === 'none' ? 'block' : 'none'">+ Upload Document</button>
+    {% endif %}
 </div>
 
-<div class="card search-card">
-    <form method="GET" class="filter-row">
-        <div class="form-group">
-            <label>Select Project</label>
+<div class="card" style="margin-bottom: 24px;">
+    <form method="GET" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label>Project</label>
             <select name="project_id" onchange="this.form.submit()">
-                <option value="">-- Choose Project --</option>
                 {% for p in projects %}
                 <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
                 {% endfor %}
@@ -25,37 +26,39 @@
     </form>
 </div>
 
-<div id="uploadForm" class="card" style="display: none; margin-bottom: 24px; border: 2px dashed #CBD5E1;">
-    <h2>Upload New Document</h2>
-    <form method="POST" enctype="multipart/form-data" class="form-grid">
-        <input type="hidden" name="project_id" value="{{ selected_project_id }}">
-        <div class="form-group">
-            <label>Document Title</label>
-            <input type="text" name="title" required placeholder="e.g. Foundation Plan">
-        </div>
-        <div class="form-group">
-            <label>Category</label>
-            <select name="category">
-                <option value="drawing">Drawing / Plan</option>
-                <option value="legal">Legal / Permit</option>
-                <option value="safety">Safety / Compliance</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-        <div class="form-group" style="grid-column: span 2;">
-            <label>Select File</label>
-            <input type="file" name="file" required>
-        </div>
-        <div style="grid-column: span 2; display: flex; gap: 12px; margin-top: 12px;">
-            <button type="submit" class="btn btn-primary">Submit Upload</button>
-            <button type="button" class="btn" onclick="toggleUploadForm()" style="background: #F1F5F9; color: #475569;">Cancel</button>
-        </div>
-    </form>
-</div>
-
 {% if selected_project_id %}
+    <div id="uploadSection" class="card" style="display: none; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
+        <h2 style="margin-bottom: 16px;">Upload New Document</h2>
+        <form method="POST" enctype="multipart/form-data" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <input type="hidden" name="project_id" value="{{ selected_project_id }}">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Document Title</label>
+                <input type="text" name="title" required placeholder="e.g. Foundation Plan Rev2">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Category</label>
+                <select name="category">
+                    <option value="drawing">Drawing / Plan</option>
+                    <option value="legal">Legal / Permit</option>
+                    <option value="safety">Safety / Compliance</option>
+                    <option value="report">Report</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
+                <label>Select File</label>
+                <input type="file" name="file" required style="padding: 8px;">
+            </div>
+            <div style="grid-column: span 2; display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary">Upload</button>
+                <button type="button" class="btn" style="background: #f1f5f9; color: #475569;" onclick="document.getElementById('uploadSection').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+
     <div class="card">
-        <h2>Documents for Selected Project</h2>
+        <h2 style="margin-bottom: 16px;">Documents</h2>
+        {% if documents %}
         <table class="data-table">
             <thead>
                 <tr>
@@ -69,59 +72,22 @@
                 {% for doc in documents %}
                 <tr>
                     <td><strong>{{ doc.title }}</strong></td>
-                    <td><span class="category-tag">{{ doc.category | title }}</span></td>
-                    <td>{{ doc.created_at.strftime('%Y-%m-%d') }}</td>
                     <td>
-                        <a href="{{ doc.file_url }}" target="_blank" class="btn btn-sm" style="background: #F1F5F9; color: #1E293B;">View / Download</a>
+                        <span style="background: #f1f5f9; padding: 3px 10px; border-radius: 100px; font-size: 11px; color: #475569; font-weight: 600;">
+                            {{ doc.category | title }}
+                        </span>
+                    </td>
+                    <td>{{ doc.created_at.strftime('%d %b %Y') }}</td>
+                    <td>
+                        <a href="{{ doc.file_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 500; font-size: 13px;">View / Download ↗</a>
                     </td>
                 </tr>
                 {% endfor %}
-                {% if not documents %}
-                <tr>
-                    <td colspan="4" class="text-center">No documents found for this project.</td>
-                </tr>
-                {% endif %}
             </tbody>
         </table>
-    </div>
-{% else %}
-    <div class="empty-state">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-        <h3>Please select a project to view its documents.</h3>
+        {% else %}
+        <p style="text-align: center; color: #94a3b8; padding: 32px 0;">No documents uploaded yet. Use the button above to upload your first document.</p>
+        {% endif %}
     </div>
 {% endif %}
-
-<script>
-function toggleUploadForm() {
-    const form = document.getElementById('uploadForm');
-    const selectedProj = "{{ selected_project_id }}";
-    if (!selectedProj) {
-        alert("Please select a project first.");
-        return;
-    }
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-}
-</script>
-
-<style>
-    .category-tag {
-        background: #F1F5F9;
-        padding: 4px 10px;
-        border-radius: 100px;
-        font-size: 11px;
-        color: #475569;
-        font-weight: 600;
-    }
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 12px;
-        text-decoration: none;
-        border-radius: 6px;
-    }
-</style>
 {% endblock %}
