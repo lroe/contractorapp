@@ -21,10 +21,13 @@ class ApiService {
     }
   }
 
-  Future<List<dynamic>> getRecentActivity({String? projectId}) async {
-    final url = projectId != null 
-        ? '$baseUrl/recent-activity/?project_id=$projectId'
-        : '$baseUrl/recent-activity/';
+  Future<List<dynamic>> getRecentActivity({String? projectId, String? userId}) async {
+    String url = '$baseUrl/recent-activity/';
+    List<String> params = [];
+    if (projectId != null) params.add('project_id=$projectId');
+    if (userId != null) params.add('user_id=$userId');
+    if (params.isNotEmpty) url += '?' + params.join('&');
+    
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to load recent activity');
@@ -34,6 +37,12 @@ class ApiService {
     final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/attendance-summary/'));
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to load attendance summary');
+  }
+
+  Future<List<dynamic>> getAttendanceDetail(String projectId, String date) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/attendance-detail/?date=$date'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load attendance detail');
   }
 
   Future<Project> createProject(String name, String ownerId) async {
@@ -151,6 +160,25 @@ class ApiService {
     }
   }
 
+  Future<void> unassignSupervisor(String projectId, String userId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/projects/$projectId/unassign/$userId'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to unassign supervisor: ${response.body}');
+    }
+  }
+
+  Future<List<User>> getProjectSupervisors(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/supervisors/'));
+    if (response.statusCode == 200) {
+      Iterable l = json.decode(response.body);
+      return List<User>.from(l.map((model) => User.fromJson(model)));
+    } else {
+      throw Exception('Failed to load project supervisors');
+    }
+  }
+
   Future<List<dynamic>> getRecentReports({int limit = 5}) async {
     final response = await http.get(Uri.parse('$baseUrl/dpr/recent/?limit=$limit'));
     if (response.statusCode == 200) {
@@ -166,6 +194,17 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to load work types');
+    }
+  }
+
+  Future<void> createWorkType(Map<String, dynamic> workTypeData) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/work-types/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(workTypeData),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to create work type: ${response.body}');
     }
   }
 
@@ -276,13 +315,29 @@ class ApiService {
     if (response.statusCode != 200) throw Exception('Failed to create material request');
   }
 
-  Future<void> updateMaterialRequestStatus(String requestId, String status) async {
+  Future<void> updateMaterialRequestStatus(String requestId, String status, {String? receivedRemarks}) async {
     final response = await http.patch(
       Uri.parse('$baseUrl/material-requests/$requestId/'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"status": status}),
+      body: jsonEncode({
+        "status": status,
+        if (receivedRemarks != null) "received_remarks": receivedRemarks,
+      }),
     );
-    if (response.statusCode != 200) throw Exception('Failed to update request status');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update request status');
+    }
+  }
+
+  Future<void> uploadMaterialRequestMedia(String requestId, List<String> filePaths) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/material-requests/$requestId/media/'));
+    for (var path in filePaths) {
+      request.files.add(await http.MultipartFile.fromPath('files', path));
+    }
+    var response = await request.send();
+    if (response.statusCode != 200) {
+      throw Exception('Failed to upload material request media');
+    }
   }
 
   Future<void> logMaterialUsage(Map<String, dynamic> usageData) async {
@@ -315,6 +370,12 @@ class ApiService {
     final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/gangs/'));
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to load gangs');
+  }
+
+  Future<List<dynamic>> getGangAttendance(String gangId, String date) async {
+    final response = await http.get(Uri.parse('$baseUrl/gangs/$gangId/attendance/$date'));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load gang attendance');
   }
 
   Future<void> createGang(Map<String, dynamic> gangData) async {
@@ -350,5 +411,48 @@ class ApiService {
       body: jsonEncode(attData),
     );
     if (response.statusCode != 200) throw Exception('Failed to submit attendance');
+  }
+
+  // Project Documents
+  Future<List<ProjectDocument>> getProjectDocuments(String projectId) async {
+    final response = await http.get(Uri.parse('$baseUrl/projects/$projectId/documents/'));
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((data) => ProjectDocument.fromJson(data)).toList();
+    } else {
+      throw Exception('Failed to load project documents');
+    }
+  }
+
+  Future<List<ProjectDocument>> uploadProjectDocuments({
+    required String projectId,
+    required String uploadedBy,
+    required List<File> files,
+  }) async {
+    var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/projects/$projectId/documents/'));
+    request.fields['uploaded_by'] = uploadedBy;
+    
+    for (var file in files) {
+      request.files.add(await http.MultipartFile.fromPath('files', file.path));
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((data) => ProjectDocument.fromJson(data)).toList();
+    } else {
+      throw Exception('Failed to upload documents: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDashboardStats(String userId, {String? projectId}) async {
+    final url = projectId != null 
+        ? '$baseUrl/dashboard-stats/?user_id=$userId&project_id=$projectId'
+        : '$baseUrl/dashboard-stats/?user_id=$userId';
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to load dashboard stats');
   }
 }

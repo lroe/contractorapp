@@ -135,6 +135,57 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
     );
   }
 
+  void _showDetails(String date) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4))),
+            const SizedBox(height: 20),
+            Text('Workers on $date', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: _apiService.getAttendanceDetail(widget.project.id, date),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                  if (snapshot.hasError) return Center(child: Text('Error: ${snapshot.error}'));
+                  final details = snapshot.data ?? [];
+                  if (details.isEmpty) return const Center(child: Text('No details found'));
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: details.length,
+                    itemBuilder: (context, index) {
+                      final w = details[index];
+                      final status = w['status'] ?? 'absent';
+                      final color = status == 'present' ? const Color(0xFF10B981) : status == 'half_day' ? const Color(0xFFF59E0B) : const Color(0xFFEF4444);
+                      return ListTile(
+                        leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(Icons.person, color: color)),
+                        title: Text(w['worker_name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(w['skill_type'] ?? 'General'),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                          child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSummaryList() {
     if (_summary.isEmpty) {
       return Center(child: Text('No attendance data available', style: GoogleFonts.outfit(color: const Color(0xFF94A3B8))));
@@ -149,32 +200,37 @@ class _AttendanceReportScreenState extends State<AttendanceReportScreen> {
         final count = item['count'];
         final cost = count * (double.tryParse(_rateController.text) ?? 0.0);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFF1F5F9))),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.calendar_today_outlined, color: Color(0xFF3B82F6), size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(date, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('${item['count']} Man-days', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                  ],
+        return GestureDetector(
+          onTap: () => _showDetails(date),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFF1F5F9))),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFF3B82F6).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.calendar_today_outlined, color: Color(0xFF3B82F6), size: 20),
                 ),
-              ),
-              Text(
-                '₹ ${cost.toStringAsFixed(0)}',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF1E293B)),
-              ),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(date, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('${item['count']} Man-days', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₹ ${cost.toStringAsFixed(0)}',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF1E293B)),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, size: 16, color: Color(0xFFCBD5E1)),
+              ],
+            ),
           ),
         );
       },

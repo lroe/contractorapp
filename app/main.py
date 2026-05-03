@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
@@ -6,6 +6,8 @@ from typing import List, Optional
 import uuid
 import os
 import shutil
+from datetime import date
+from fastapi import WebSocket, WebSocketDisconnect
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine, get_db
@@ -30,6 +32,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# WebSocket Manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except:
+                pass
+
+manager = ConnectionManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Contractor DB API"}
@@ -52,13 +84,27 @@ def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)
     return crud.create_project(db=db, project=project)
 
 @app.get("/projects/", response_model=List[schemas.Project])
-def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_projects(db, skip=skip, limit=limit)
+def read_projects(
+    user_id: Optional[uuid.UUID] = None,
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Project)
+    if user_id:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.role == 'owner':
+            query = query.filter(models.Project.owner_id == user_id)
+        elif user and user.role == 'supervisor':
+            query = query.join(models.ProjectUser).filter(models.ProjectUser.user_id == user_id)
+    return query.offset(skip).limit(limit).all()
 
 # DPR Entries
 @app.post("/dpr/", response_model=schemas.DPREntry)
-def create_dpr_entry(dpr: schemas.DPREntryCreate, db: Session = Depends(get_db)):
-    return crud.create_dpr_entry(db=db, dpr=dpr)
+async def create_dpr_entry(dpr: schemas.DPREntryCreate, db: Session = Depends(get_db)):
+    db_dpr = crud.create_dpr_entry(db=db, dpr=dpr)
+    await manager.broadcast({"type": "NEW_DPR", "project_id": str(db_dpr.project_id)})
+    return db_dpr
 
 # Multi-media Upload for DPR
 @app.post("/dpr/{dpr_id}/media/")
@@ -117,11 +163,22 @@ def assign_supervisor(project_id: uuid.UUID, user_id: uuid.UUID, db: Session = D
 def get_supervisors(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_project_supervisors(db, project_id)
 
+@app.delete("/projects/{project_id}/unassign/{user_id}")
+def unassign_supervisor(project_id: uuid.UUID, user_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.unassign_user_from_project(db, project_id, user_id)
+
 @app.get("/users/{user_id}/projects/")
 def get_user_projects(user_id: uuid.UUID, db: Session = Depends(get_db)):
-    return db.query(models.Project).join(models.ProjectUser).filter(
-        models.ProjectUser.user_id == user_id
-    ).all()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.role == 'owner':
+        return db.query(models.Project).filter(models.Project.owner_id == user_id).all()
+    else:
+        return db.query(models.Project).join(models.ProjectUser).filter(
+            models.ProjectUser.user_id == user_id
+        ).all()
 
 @app.get("/projects/{project_id}/dpr/")
 def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -142,28 +199,82 @@ def get_attendance_summary(project_id: uuid.UUID, db: Session = Depends(get_db))
     
     return [{"date": s.entry_date, "count": float(s.total_man_days)} for s in summary]
 
+@app.get("/projects/{project_id}/attendance-detail/")
+def get_attendance_detail(project_id: uuid.UUID, date: date, db: Session = Depends(get_db)):
+    attendance = db.query(models.Attendance, models.Worker).join(
+        models.Worker, models.Attendance.worker_id == models.Worker.id
+    ).filter(
+        models.Attendance.project_id == project_id,
+        models.Attendance.entry_date == date
+    ).all()
+    
+    return [
+        {
+            "worker_name": w.name,
+            "status": a.status,
+            "skill_type": w.skill_type
+        } for a, w in attendance
+    ]
+
+@app.get("/gangs/{gang_id}/attendance/{date}")
+def get_gang_attendance(gang_id: uuid.UUID, date: date, db: Session = Depends(get_db)):
+    return crud.get_gang_attendance(db, gang_id, date)
+
 @app.get("/dpr/recent/")
 def get_recent_dpr(limit: int = 5, db: Session = Depends(get_db)):
     return db.query(models.DPREntry).order_by(models.DPREntry.created_at.desc()).limit(limit).all()
 
 @app.get("/recent-activity/")
-def get_recent_activity(project_id: Optional[uuid.UUID] = None, limit: int = 15, db: Session = Depends(get_db)):
+def get_recent_activity(
+    user_id: Optional[uuid.UUID] = None,
+    project_id: Optional[uuid.UUID] = None, 
+    limit: int = 15, 
+    db: Session = Depends(get_db)
+):
+    # Determine allowed project IDs
+    if project_id:
+        allowed_project_ids = [project_id]
+    elif user_id:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        if user.role == 'owner':
+            projects = db.query(models.Project).filter(models.Project.owner_id == user_id).all()
+            if not projects:
+                return [] # No projects, so no activity
+            allowed_project_ids = [p.id for p in projects]
+        else:
+            # Supervisor: Only see projects they are assigned to
+            assigned_projects = db.query(models.Project).join(models.ProjectUser).filter(
+                models.ProjectUser.user_id == user_id
+            ).all()
+            if not assigned_projects:
+                return []
+            allowed_project_ids = [p.id for p in assigned_projects]
+    else:
+        allowed_project_ids = []
+
     # Fetch DPRs
     dpr_query = db.query(models.DPREntry)
-    if project_id:
-        dpr_query = dpr_query.filter(models.DPREntry.project_id == project_id)
+    if allowed_project_ids:
+        dpr_query = dpr_query.filter(models.DPREntry.project_id.in_(allowed_project_ids))
+    elif user_id and user.role == 'owner':
+        # This case is handled by return [] above, but for safety:
+        return []
+        
     dprs = dpr_query.order_by(models.DPREntry.created_at.desc()).limit(limit).all()
     
     # Fetch Material Requests
     mr_query = db.query(models.MaterialRequest)
-    if project_id:
-        mr_query = mr_query.filter(models.MaterialRequest.project_id == project_id)
+    if allowed_project_ids:
+        mr_query = mr_query.filter(models.MaterialRequest.project_id.in_(allowed_project_ids))
     mrs = mr_query.order_by(models.MaterialRequest.created_at.desc()).limit(limit).all()
     
     # Fetch Recent Attendance
     att_query = db.query(models.Attendance)
-    if project_id:
-        att_query = att_query.filter(models.Attendance.project_id == project_id)
+    if allowed_project_ids:
+        att_query = att_query.filter(models.Attendance.project_id.in_(allowed_project_ids))
     atts = att_query.order_by(models.Attendance.created_at.desc()).limit(limit).all()
     
     activity = []
@@ -243,7 +354,7 @@ def get_project_tasks(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return db.query(models.Task).filter(models.Task.project_id == project_id).order_by(models.Task.created_at.desc()).all()
 
 @app.patch("/tasks/{task_id}/status/")
-def update_task_status(task_id: uuid.UUID, status: str, db: Session = Depends(get_db)):
+async def update_task_status(task_id: uuid.UUID, status: str, db: Session = Depends(get_db)):
     task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -252,6 +363,7 @@ def update_task_status(task_id: uuid.UUID, status: str, db: Session = Depends(ge
     task.status = status
     db.commit()
     db.refresh(task)
+    await manager.broadcast({"type": "TASK_UPDATED", "project_id": str(task.project_id)})
     return task
 
 @app.get("/tasks/{task_id}/dpr/")
@@ -280,17 +392,40 @@ def read_material_requests(project_id: uuid.UUID, db: Session = Depends(get_db))
     return crud.get_material_requests(db, project_id)
 
 @app.post("/material-requests/", response_model=schemas.MaterialRequest)
-def create_material_request(request: schemas.MaterialRequestCreate, db: Session = Depends(get_db)):
-    return crud.create_material_request(db, request)
+async def create_material_request(request: schemas.MaterialRequestCreate, db: Session = Depends(get_db)):
+    db_request = crud.create_material_request(db, request)
+    await manager.broadcast({"type": "NEW_MATERIAL_REQUEST", "project_id": str(db_request.project_id)})
+    return db_request
 
 @app.patch("/material-requests/{request_id}/", response_model=schemas.MaterialRequest)
-def update_material_request_status(request_id: uuid.UUID, update: schemas.MaterialRequestUpdate, db: Session = Depends(get_db)):
-    return crud.update_material_request_status(db, request_id, update.status)
+async def update_material_request_status(request_id: uuid.UUID, update: schemas.MaterialRequestUpdate, db: Session = Depends(get_db)):
+    db_request = crud.update_material_request_status(db, request_id, update.status, update.received_remarks)
+    await manager.broadcast({"type": "MATERIAL_REQUEST_UPDATED", "project_id": str(db_request.project_id)})
+    return db_request
+
+@app.post("/material-requests/{request_id}/media/")
+async def upload_material_request_media(request_id: uuid.UUID, files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
+    uploaded_files = []
+    for file in files:
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"req_{request_id}_{uuid.uuid4()}{file_extension}"
+        file_path = f"uploads/{unique_filename}"
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        media_url = f"/uploads/{unique_filename}"
+        db_media = crud.create_material_request_media(db, request_id, media_url)
+        uploaded_files.append(db_media)
+    
+    return uploaded_files
 
 # Usage
 @app.post("/material-usage/", response_model=schemas.MaterialUsage)
-def log_material_usage(usage: schemas.MaterialUsageCreate, db: Session = Depends(get_db)):
-    return crud.log_material_usage(db, usage)
+async def log_material_usage(usage: schemas.MaterialUsageCreate, db: Session = Depends(get_db)):
+    db_usage = crud.log_material_usage(db, usage)
+    await manager.broadcast({"type": "MATERIAL_USAGE_LOGGED", "project_id": str(db_usage.project_id)})
+    return db_usage
 
 @app.get("/projects/{project_id}/material-usage/", response_model=List[schemas.MaterialUsage])
 def read_material_usage(project_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -325,3 +460,99 @@ def read_workers(gang_id: uuid.UUID, db: Session = Depends(get_db)):
 @app.post("/attendance/", response_model=schemas.Attendance)
 def mark_attendance(attendance: schemas.AttendanceCreate, db: Session = Depends(get_db)):
     return crud.mark_attendance(db, attendance)
+
+# Project Documents
+@app.post("/projects/{project_id}/documents/", response_model=List[schemas.ProjectDocument])
+async def upload_project_documents(
+    project_id: uuid.UUID,
+    uploaded_by: uuid.UUID = Form(...),
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    upload_dir = f"uploads/projects/{project_id}/documents"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    docs = []
+    for file in files:
+        safe_name = f"{uuid.uuid4()}_{file.filename.replace(' ', '_')}"
+        file_path = os.path.join(upload_dir, safe_name)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        file_url = f"/uploads/projects/{project_id}/documents/{safe_name}"
+        file_type = file.filename.split('.')[-1] if '.' in file.filename else "unknown"
+        
+        doc_create = schemas.ProjectDocumentCreate(
+            project_id=project_id,
+            name=file.filename, # Use original filename as the document name
+            file_url=file_url,
+            file_type=file_type,
+            uploaded_by=uploaded_by
+        )
+        
+        db_doc = crud.create_project_document(db, doc_create)
+        docs.append(db_doc)
+    
+    await manager.broadcast({"type": "NEW_DOCUMENT", "project_id": str(project_id)})
+    return docs
+
+@app.get("/projects/{project_id}/documents/", response_model=List[schemas.ProjectDocument])
+def get_project_documents(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_project_documents(db, project_id)
+
+# Dashboard Stats
+@app.get("/dashboard-stats/")
+def get_dashboard_stats(
+    user_id: uuid.UUID,
+    project_id: Optional[uuid.UUID] = None,
+    db: Session = Depends(get_db)
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.role == 'owner':
+        active_projects = db.query(models.Project).filter(
+            models.Project.status == 'active',
+            models.Project.owner_id == user_id
+        ).count()
+        
+        # Sum revenue for projects owned by this user
+        total_revenue = db.query(func.sum(models.Transaction.amount)).join(models.Project).filter(
+            models.Transaction.type == 'INCOME',
+            models.Project.owner_id == user_id
+        ).scalar() or 0
+        
+        return {
+            "stat1_label": "Active Projects",
+            "stat1_value": str(active_projects).zfill(2),
+            "stat2_label": "Total Revenue",
+            "stat2_value": f"₹{float(total_revenue)/1000:.1f}k" if total_revenue >= 1000 else f"₹{float(total_revenue)}"
+        }
+    else:
+        # Supervisor
+        if not project_id:
+            return {
+                "stat1_label": "Pending Tasks",
+                "stat1_value": "00",
+                "stat2_label": "Active Tasks",
+                "stat2_value": "00"
+            }
+        
+        pending_tasks = db.query(models.Task).filter(
+            models.Task.project_id == project_id,
+            models.Task.status == 'pending'
+        ).count()
+        
+        in_progress_tasks = db.query(models.Task).filter(
+            models.Task.project_id == project_id,
+            models.Task.status == 'in_progress'
+        ).count()
+        
+        return {
+            "stat1_label": "Pending Tasks",
+            "stat1_value": str(pending_tasks).zfill(2),
+            "stat2_label": "Active Tasks",
+            "stat2_value": str(in_progress_tasks).zfill(2)
+        }

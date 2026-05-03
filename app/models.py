@@ -75,11 +75,12 @@ class Task(Base):
     __tablename__ = "tasks"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    work_type_id = Column(UUID(as_uuid=True), ForeignKey("work_types.id"), index=True)
+    name = Column(String(200), nullable=False)
+    work_type_id = Column(UUID(as_uuid=True), ForeignKey("work_types.id"), index=True, nullable=True)
     block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id"), index=True)
     floor_id = Column(UUID(as_uuid=True), ForeignKey("floors.id"), index=True)
     area_id = Column(UUID(as_uuid=True), ForeignKey("areas.id"), index=True)
-    target_quantity = Column(Numeric(12, 2), nullable=False)
+    target_quantity = Column(Numeric(12, 2), nullable=True)
     unit = Column(String(20))
     deadline = Column(Date)
     status = Column(String(20), default="pending")
@@ -178,7 +179,16 @@ class MaterialRequest(Base):
     requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     status = Column(String(20), default="pending") # pending, approved, rejected, received
     remarks = Column(Text)
+    received_remarks = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+    media = relationship("MaterialRequestMedia", backref="request", cascade="all, delete-orphan")
+
+class MaterialRequestMedia(Base):
+    __tablename__ = "material_request_media"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id = Column(UUID(as_uuid=True), ForeignKey("material_requests.id", ondelete="CASCADE"))
+    media_url = Column(Text, nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
 
 class MaterialUsage(Base):
     __tablename__ = "material_usage"
@@ -203,3 +213,13 @@ class Transaction(Base):
     transaction_date = Column(Date, default=datetime.utcnow)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class ProjectDocument(Base):
+    __tablename__ = "project_documents"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    name = Column(String(200), nullable=False)
+    file_url = Column(Text, nullable=False)
+    file_type = Column(String(50)) # pdf, docx, jpg, etc.
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    uploaded_at = Column(DateTime, default=datetime.utcnow)

@@ -99,10 +99,46 @@ class _TasksScreenState extends State<TasksScreen> {
     setState(() => _lastViewed[taskId] = DateTime.now());
   }
 
-  void _showCreateTaskDialog() {
-    final quantityController = TextEditingController();
+  Future<void> _showCreateWorkTypeDialog() async {
+    final nameController = TextEditingController();
     final unitController = TextEditingController();
-    String? selectedWorkTypeId;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('New Work Type', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name (e.g. Tiling)')),
+            TextField(controller: unitController, decoration: const InputDecoration(labelText: 'Unit (e.g. Sqft)')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                await _apiService.createWorkType({
+                  'name': nameController.text,
+                  'unit': unitController.text,
+                });
+                await _loadData();
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateTaskDialog() {
+    final nameController = TextEditingController();
     DateTime? selectedDeadline;
 
     showModalBottomSheet(
@@ -127,41 +163,15 @@ class _TasksScreenState extends State<TasksScreen> {
               const SizedBox(height: 20),
               Text('Add New Task', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 24),
-              Text('Work Type', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12)),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    hint: const Text('Select work type'),
-                    value: selectedWorkTypeId,
-                    items: _workTypes.map<DropdownMenuItem<String>>((wt) => DropdownMenuItem<String>(
-                      value: wt['id'].toString(),
-                      child: Text('${wt['name']} (${wt['unit'] ?? 'unit'})'),
-                    )).toList(),
-                    onChanged: (val) {
-                      setModalState(() {
-                        selectedWorkTypeId = val;
-                        unitController.text = _workTypes.firstWhere((w) => w['id'].toString() == val)['unit'] ?? '';
-                      });
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('Target Quantity', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
+              Text('Task Name', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
               const SizedBox(height: 8),
               TextField(
-                controller: quantityController,
-                keyboardType: TextInputType.number,
+                controller: nameController,
                 decoration: InputDecoration(
-                  hintText: 'e.g. 500',
+                  hintText: 'e.g. Plastering in Block A',
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  suffixText: unitController.text,
                 ),
               ),
               const SizedBox(height: 16),
@@ -196,17 +206,15 @@ class _TasksScreenState extends State<TasksScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () async {
-                    if (selectedWorkTypeId == null || quantityController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in work type and quantity')));
+                    if (nameController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter task name')));
                       return;
                     }
                     Navigator.pop(ctx);
                     try {
                       await _apiService.createTask({
                         'project_id': widget.project.id,
-                        'work_type_id': selectedWorkTypeId,
-                        'target_quantity': double.parse(quantityController.text),
-                        'unit': unitController.text,
+                        'name': nameController.text,
                         'deadline': selectedDeadline?.toIso8601String().split('T')[0],
                         'status': 'pending',
                         'created_by': widget.user.id,
@@ -251,11 +259,10 @@ class _TasksScreenState extends State<TasksScreen> {
           Text('Tasks', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20)),
           Text(widget.project.name, style: GoogleFonts.outfit(fontSize: 13, color: const Color(0xFF64748B))),
         ]),
-        actions: isOwner
-            ? [Padding(
+        actions: [Padding(
                 padding: const EdgeInsets.only(right: 16),
                 child: ElevatedButton.icon(
-                  onPressed: _workTypes.isEmpty ? null : _showCreateTaskDialog,
+                  onPressed: _showCreateTaskDialog,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Add Task'),
                   style: ElevatedButton.styleFrom(
@@ -265,8 +272,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   ),
                 ),
-              )]
-            : null,
+              )],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -307,18 +313,13 @@ class _TasksScreenState extends State<TasksScreen> {
       default:            statusColor = const Color(0xFFF59E0B); statusIcon = Icons.radio_button_unchecked;
     }
 
-    final workType = _workTypes.isNotEmpty
-        ? _workTypes.firstWhere((w) => w['id'].toString() == task['work_type_id']?.toString(), orElse: () => null)
-        : null;
-    final workTypeName = workType?['name'] ?? 'Task';
-    final unit = task['unit'] ?? '';
-    final targetQty = task['target_quantity'] ?? 0;
+    final taskName = task['name'] ?? 'Task';
 
     return GestureDetector(
       onTap: () async {
         await _markViewed(taskId);
         if (!mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task, workTypeName: workTypeName)));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -350,7 +351,7 @@ class _TasksScreenState extends State<TasksScreen> {
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Flexible(child: Text(workTypeName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16))),
+                  Flexible(child: Text(taskName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16))),
                   if (unseen) ...[
                     const SizedBox(width: 8),
                     Container(
@@ -360,7 +361,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     ),
                   ],
                 ]),
-                Text('Target: $targetQty $unit', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text('Status: ${status.replaceAll('_', ' ').toUpperCase()}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
               ])),
               PopupMenuButton<String>(
                 tooltip: 'Update status',
@@ -395,15 +396,6 @@ class _TasksScreenState extends State<TasksScreen> {
               const Text('View reports', style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1))),
             ]),
           ),
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-            child: LinearProgressIndicator(
-              value: status == 'completed' ? 1.0 : status == 'in_progress' ? 0.5 : 0.0,
-              backgroundColor: const Color(0xFFF1F5F9),
-              color: statusColor,
-              minHeight: 6,
-            ),
-          ),
         ]),
       ),
     );
@@ -414,8 +406,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
 class TaskDetailScreen extends StatelessWidget {
   final dynamic task;
-  final String workTypeName;
-  const TaskDetailScreen({super.key, required this.task, required this.workTypeName});
+  const TaskDetailScreen({super.key, required this.task});
 
   @override
   Widget build(BuildContext context) {
@@ -427,7 +418,7 @@ class TaskDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(workTypeName, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(task['name'] ?? 'Task Detail', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
       ),
       body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
@@ -440,7 +431,7 @@ class TaskDetailScreen extends StatelessWidget {
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text(workTypeName, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold))),
+              Expanded(child: Text(task['name'] ?? 'Task', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold))),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
@@ -448,15 +439,8 @@ class TaskDetailScreen extends StatelessWidget {
               ),
             ]),
             const SizedBox(height: 12),
-            _infoRow(Icons.flag_outlined, 'Target', '${task['target_quantity']} ${task['unit'] ?? ''}'),
             if (task['deadline'] != null) _infoRow(Icons.calendar_today, 'Deadline', task['deadline']),
             const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: status == 'completed' ? 1.0 : status == 'in_progress' ? 0.5 : 0.0,
-              backgroundColor: const Color(0xFFF1F5F9),
-              color: statusColor,
-              minHeight: 8,
-            ),
           ]),
         ),
         Padding(

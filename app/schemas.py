@@ -59,11 +59,12 @@ class WorkType(WorkTypeBase):
 # Task Schemas
 class TaskBase(BaseModel):
     project_id: UUID
-    work_type_id: UUID
+    name: str
+    work_type_id: Optional[UUID] = None
     block_id: Optional[UUID] = None
     floor_id: Optional[UUID] = None
     area_id: Optional[UUID] = None
-    target_quantity: Decimal
+    target_quantity: Optional[Decimal] = 0
     unit: Optional[str] = None
     deadline: Optional[date] = None
     status: str = "pending"
@@ -162,6 +163,14 @@ class ProjectInventory(ProjectInventoryBase):
     class Config:
         from_attributes = True
 
+class MaterialRequestMedia(BaseModel):
+    id: UUID
+    media_url: str
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class MaterialRequestBase(BaseModel):
     project_id: UUID
     material_id: UUID
@@ -172,15 +181,18 @@ class MaterialRequestCreate(MaterialRequestBase):
     requested_by: UUID
 
 class MaterialRequestUpdate(BaseModel):
-    status: str # approved, rejected, received
+    status: str # pending, approved, rejected, received
     remarks: Optional[str] = None
+    received_remarks: Optional[str] = None
 
 class MaterialRequest(MaterialRequestBase):
     id: UUID
     requested_by: UUID
     status: str
+    received_remarks: Optional[str] = None
     created_at: datetime
     material: Optional[Material] = None # For joined responses
+    media: List[MaterialRequestMedia] = []
     class Config:
         from_attributes = True
 
@@ -263,5 +275,24 @@ class AttendanceCreate(AttendanceBase):
 class Attendance(AttendanceBase):
     id: UUID
     created_at: datetime
+    class Config:
+        from_attributes = True
+
+# Project Document Schemas
+class ProjectDocumentBase(BaseModel):
+    project_id: UUID
+    name: str
+    file_type: Optional[str] = None
+
+class ProjectDocumentCreate(ProjectDocumentBase):
+    file_url: str
+    uploaded_by: UUID
+
+class ProjectDocument(ProjectDocumentBase):
+    id: UUID
+    file_url: str
+    uploaded_by: UUID
+    uploaded_at: datetime
+
     class Config:
         from_attributes = True

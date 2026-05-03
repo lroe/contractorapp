@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import 'package:uuid/uuid.dart';
+import 'documents_screen.dart';
 
 class ProjectManagementScreen extends StatefulWidget {
   final User? user; // Null if just viewing projects
@@ -26,7 +27,19 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
 
   Future<void> _initHive() async {
     _projectBox = Hive.box<Project>('projects');
-    setState(() => _isLoading = false);
+    await _syncProjects();
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  Future<void> _syncProjects() async {
+    if (widget.user == null) return;
+    try {
+      final remoteProjects = await ApiService().getProjectsForUser(widget.user!.id);
+      await _projectBox.clear();
+      await _projectBox.addAll(remoteProjects);
+    } catch (e) {
+      debugPrint('Error syncing projects: $e');
+    }
   }
 
   void _showCreateProjectDialog() {
@@ -131,6 +144,21 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
+              icon: const Icon(Icons.description_outlined, color: Colors.blueAccent),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DocumentsScreen(
+                      projectId: project.id,
+                      projectName: project.name,
+                      userId: widget.user?.id ?? '',
+                    ),
+                  ),
+                );
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
               onPressed: () {
                 project.delete();
@@ -166,20 +194,26 @@ class AssignSupervisorScreen extends StatefulWidget {
 
 class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
   final ApiService _apiService = ApiService();
-  List<User> _supervisors = [];
+  List<User> _allSupervisors = [];
+  List<User> _assignedSupervisors = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSupervisors();
+    _loadData();
   }
 
-  Future<void> _loadSupervisors() async {
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
     try {
-      final supervisors = await _apiService.getSupervisors();
+      final results = await Future.wait([
+        _apiService.getSupervisors(),
+        _apiService.getProjectSupervisors(widget.project.id),
+      ]);
       setState(() {
-        _supervisors = supervisors;
+        _allSupervisors = results[0];
+        _assignedSupervisors = results[1];
         _isLoading = false;
       });
     } catch (e) {
@@ -187,16 +221,26 @@ class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
     }
   }
 
-  Future<void> _assignSupervisor(User supervisor) async {
+  bool _isAssigned(String userId) {
+    return _assignedSupervisors.any((u) => u.id == userId);
+  }
+
+  Future<void> _toggleAssignment(User supervisor) async {
+    final assigned = _isAssigned(supervisor.id);
     try {
-      await _apiService.assignSupervisor(widget.project.id, supervisor.id);
+      if (assigned) {
+        await _apiService.unassignSupervisor(widget.project.id, supervisor.id);
+      } else {
+        await _apiService.assignSupervisor(widget.project.id, supervisor.id);
+      }
+      await _loadData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Assigned ${supervisor.name} to ${widget.project.name}')),
+        SnackBar(content: Text(assigned ? 'Removed ${supervisor.name}' : 'Assigned ${supervisor.name}')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error assigning supervisor: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -214,17 +258,17 @@ class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
           children: [
             Text('Project: ${widget.project.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
-            const Text('Available Supervisors', style: TextStyle(color: Colors.grey)),
+            const Text('All Supervisors', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 16),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _supervisors.isEmpty
+                  : _allSupervisors.isEmpty
                       ? const Center(child: Text('No supervisors found.'))
                       : ListView.builder(
-                          itemCount: _supervisors.length,
+                          itemCount: _allSupervisors.length,
                           itemBuilder: (context, index) {
-                            final supervisor = _supervisors[index];
+                            final supervisor = _allSupervisors[index];
                             return _buildSupervisorTile(supervisor);
                           },
                         ),
@@ -236,21 +280,29 @@ class _AssignSupervisorScreenState extends State<AssignSupervisorScreen> {
   }
 
   Widget _buildSupervisorTile(User supervisor) {
+    final assigned = _isAssigned(supervisor.id);
     return Card(
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFF1F5F9)),
+        side: BorderSide(color: assigned ? const Color(0xFF3B82F6).withOpacity(0.3) : const Color(0xFFF1F5F9), width: assigned ? 1.5 : 1),
       ),
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person)),
+        leading: CircleAvatar(
+          backgroundColor: assigned ? const Color(0xFF3B82F6).withOpacity(0.1) : const Color(0xFFF1F5F9),
+          child: Icon(Icons.person, color: assigned ? const Color(0xFF3B82F6) : Colors.grey),
+        ),
         title: Text(supervisor.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('Role: ${supervisor.role} • ${supervisor.phone}'),
         trailing: ElevatedButton(
-          onPressed: () => _assignSupervisor(supervisor),
-          child: const Text('Assign'),
+          onPressed: () => _toggleAssignment(supervisor),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: assigned ? const Color(0xFF10B981) : const Color(0xFF1E293B),
+            foregroundColor: Colors.white,
+          ),
+          child: Text(assigned ? 'Assigned' : 'Assign'),
         ),
       ),
     );

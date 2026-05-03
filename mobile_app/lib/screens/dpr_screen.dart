@@ -188,7 +188,7 @@ class _DPRScreenState extends State<DPRScreen> {
               items: [
                 const DropdownMenuItem<String>(value: null, child: Text('None', style: TextStyle(color: Color(0xFF94A3B8)))),
                 ..._tasks.map<DropdownMenuItem<String>>((t) {
-                  final name = t['work_type_id'] != null ? '${t['unit'] ?? ''} task — ${t['target_quantity']}' : 'Task';
+                  final name = t['name'] ?? 'Task';
                   return DropdownMenuItem<String>(
                     value: t['id'].toString(),
                     child: Text(name, overflow: TextOverflow.ellipsis),

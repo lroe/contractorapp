@@ -160,11 +160,31 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
   Future<void> _loadWorkers() async {
     setState(() => _isLoading = true);
     try {
-      final workers = await _apiService.getWorkers(widget.gang['id']);
+      final now = DateTime.now();
+      final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+      
+      final results = await Future.wait([
+        _apiService.getWorkers(widget.gang['id']),
+        _apiService.getGangAttendance(widget.gang['id'], dateStr),
+      ]);
+      
+      final workers = results[0] as List<dynamic>;
+      final existingAttendance = results[1] as List<dynamic>;
+
       setState(() {
         _workers = workers;
+        
+        // 1. Pre-fill from backend if exists
+        for (var att in existingAttendance) {
+          _attendanceMap[att['worker_id'].toString()] = att['status'];
+        }
+
+        // 2. Default others to 'present' only if they aren't already set locally
         for (var w in _workers) {
-          _attendanceMap[w['id']] = 'present'; // Default
+          final id = w['id'].toString();
+          if (!_attendanceMap.containsKey(id)) {
+            _attendanceMap[id] = 'present';
+          }
         }
         _isLoading = false;
       });

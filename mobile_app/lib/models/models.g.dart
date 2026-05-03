@@ -229,3 +229,52 @@ class AttendanceAdapter extends TypeAdapter<Attendance> {
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
+
+class ProjectDocumentAdapter extends TypeAdapter<ProjectDocument> {
+  @override
+  final int typeId = 5;
+
+  @override
+  ProjectDocument read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return ProjectDocument(
+      id: fields[0] as String,
+      name: fields[1] as String,
+      fileUrl: fields[2] as String,
+      fileType: fields[3] as String?,
+      uploadedBy: fields[4] as String,
+      uploadedAt: fields[5] as DateTime,
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, ProjectDocument obj) {
+    writer
+      ..writeByte(6)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.fileUrl)
+      ..writeByte(3)
+      ..write(obj.fileType)
+      ..writeByte(4)
+      ..write(obj.uploadedBy)
+      ..writeByte(5)
+      ..write(obj.uploadedAt);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProjectDocumentAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}

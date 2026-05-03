@@ -121,3 +121,41 @@ class Attendance extends HiveObject {
     this.isSynced = false,
   });
 }
+
+@HiveType(typeId: 5)
+class ProjectDocument extends HiveObject {
+  @HiveField(0)
+  final String id;
+  @HiveField(1)
+  final String name;
+  @HiveField(2)
+  final String fileUrl;
+  @HiveField(3)
+  final String? fileType;
+  @HiveField(4)
+  final String uploadedBy;
+  @HiveField(5)
+  final DateTime uploadedAt;
+
+  ProjectDocument({
+    required this.id,
+    required this.name,
+    required this.fileUrl,
+    this.fileType,
+    required this.uploadedBy,
+    required this.uploadedAt,
+  });
+
+  factory ProjectDocument.fromJson(Map<String, dynamic> json) {
+    return ProjectDocument(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? 'Unnamed Document',
+      fileUrl: json['file_url'] ?? '',
+      fileType: json['file_type'],
+      uploadedBy: json['uploaded_by']?.toString() ?? '',
+      uploadedAt: json['uploaded_at'] != null 
+          ? DateTime.parse(json['uploaded_at']) 
+          : DateTime.now(),
+    );
+  }
+}

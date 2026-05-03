@@ -1,0 +1,143 @@
+Only 4 Bottom Tabs:
+
+Home
+DPR (Daily Progress)
+Tasks
+Labour
+
+
+How Task Assignment Works (Simple)
+Flow:
+
+Contract Owner (office) creates tasks whenever he wants.
+Supervisor (site) can see all tasks of the project.
+Supervisor does the work and records it in DPR.
+In DPR, he can link the work to a task (optional but useful).
+
+Detailed Screens
+Tasks Screen
+
+List of all tasks (cards)
+Each card shows:
+Work name (e.g., Wall Plastering)
+Location (Block A - 2nd Floor)
+Quantity target (350 sq ft)
+Deadline
+Status (Pending / In Progress / Completed)
+
+
+Create Task (by Owner or Supervisor):
+
+Work type (dropdown)
+Location (Block → Floor → Area)
+Target Quantity
+Deadline date
+Save
+
+No "Assign to" field needed — because every supervisor in that project can see all tasks.
+DPR Screen (Daily Work)
+When supervisor adds daily work:
+
+Location
+Work done (dropdown)
+Quantity
+Photos (1-3)
+"Link to Task" → Optional dropdown (shows all open tasks)
+Remarks
+
+This way, owner can later see which task is progressing.
+Labour Screen
+
+Mark daily attendance (Gang-wise — Present/Absent)
+Simple Gang list
+
+Home Screen
+
+Project switcher at top
+Today’s summary:
+Tasks in progress
+Labour present today
+DPR entries made today
+
+Quick buttons: + DPR | Mark Attendance
+
+
+Permissions (Very Simple)
+
+Contract Owner:
+Can create tasks
+Can view everything
+Can add DPR (if he visits site)
+
+Supervisor:
+Can add DPR
+Can mark labour attendance
+Can create tasks (optional)
+Can update task status
+
+
+
+Summary of Minimal Features
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FeatureIncluded?ComplexityDPR with photosYesCoreLabour AttendanceYesSimpleTasks (by Owner)YesVery simpleMulti ProjectYesMustOffline supportYesMustReportsNoLaterMaterialsNoLaterBillingNoLater
+
+This version is really minimal and practical.
+Daily usage for Supervisor:
+
+Mark Labour attendance (morning)
+Add 3-4 DPR entries during the day (with photos)
+Occasionally check Tasks
+
+For Owner:
+
+Creates tasks from office
+Checks progress via Home + Tasks + DPR list

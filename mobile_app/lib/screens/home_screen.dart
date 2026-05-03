@@ -8,9 +8,12 @@ import 'report_detail_screen.dart';
 import 'inventory_screen.dart';
 import 'finance_screen.dart';
 import 'attendance_report_screen.dart';
+import 'documents_screen.dart';
+import 'notification_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
+import '../services/websocket_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +28,33 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Project> _assignedProjects = [];
   Project? _selectedProject;
   bool _isLoadingProjects = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WebSocketService().connect((message) {
+      if (mounted) {
+        // Refresh recent activity on any relevant update
+        final type = message['type'];
+        if (type == 'NEW_DPR' || 
+            type == 'NEW_DOCUMENT' || 
+            type == 'NEW_MATERIAL_REQUEST' || 
+            type == 'MATERIAL_REQUEST_UPDATED' || 
+            type == 'MATERIAL_USAGE_LOGGED' ||
+            type == 'TASK_UPDATED') {
+          setState(() {
+            // This will trigger FutureBuilder to re-run
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WebSocketService().disconnect();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -185,12 +215,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsRow(bool isOwner) {
-    return Row(
-      children: [
-        _buildStatCard(isOwner ? 'Active Projects' : 'Pending Tasks', isOwner ? '04' : '12', isOwner ? Colors.blue : Colors.orange),
-        const SizedBox(width: 16),
-        _buildStatCard(isOwner ? 'Total Revenue' : 'Work Progress', isOwner ? '₹1.2M' : '65%', isOwner ? Colors.green : Colors.blue),
-      ],
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _apiService.getDashboardStats(_currentUser!.id, projectId: _selectedProject?.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting && !_isLoadingProjects) {
+          // Show placeholders or keep old values
+        }
+        
+        final stats = snapshot.data ?? {
+          "stat1_label": isOwner ? 'Active Projects' : 'Pending Tasks',
+          "stat1_value": '--',
+          "stat2_label": isOwner ? 'Total Revenue' : 'Active Tasks',
+          "stat2_value": '--'
+        };
+
+        return Row(
+          children: [
+            _buildStatCard(stats['stat1_label'], stats['stat1_value'], isOwner ? Colors.blue : Colors.orange),
+            const SizedBox(width: 16),
+            _buildStatCard(stats['stat2_label'], stats['stat2_value'], isOwner ? Colors.green : Colors.blue),
+          ],
+        );
+      },
     );
   }
 
@@ -249,6 +295,23 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.person_search,
           const Color(0xFF3B82F6),
           () => Navigator.push(context, MaterialPageRoute(builder: (context) => ProjectManagementScreen(user: _currentUser!))),
+        ),
+        _buildActionCard(
+          context,
+          'DPR Entry',
+          Icons.edit_document,
+          const Color(0xFF1E293B),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => DPRScreen(project: project, user: _currentUser!)),
+                ),
+              ),
+            ),
+          ),
         ),
         _buildActionCard(
           context,
@@ -335,6 +398,30 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        _buildActionCard(
+          context,
+          'Documents',
+          Icons.folder_copy_outlined,
+          const Color(0xFF8B5CF6),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DocumentsScreen(
+                      projectId: project.id,
+                      projectName: project.name,
+                      userId: _currentUser!.id,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ] : [
         _buildActionCard(
           context,
@@ -401,6 +488,28 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(context, MaterialPageRoute(builder: (context) => InventoryScreen(project: _selectedProject!, user: _currentUser!)));
           },
         ),
+        _buildActionCard(
+          context,
+          'Documents',
+          Icons.folder_copy_outlined,
+          const Color(0xFF8B5CF6),
+          () {
+            if (_selectedProject == null) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a project first')));
+              return;
+            }
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DocumentsScreen(
+                  projectId: _selectedProject!.id,
+                  projectName: _selectedProject!.name,
+                  userId: _currentUser!.id,
+                ),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
@@ -416,22 +525,15 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Recent Activity', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
             TextButton(
               onPressed: () {
-                if (_selectedProject != null) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsListScreen(project: _selectedProject!)));
-                } else {
-                  // If Owner or no project selected, show all project reports via management screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProjectManagementScreen(
-                        onProjectTap: (project) => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ReportsListScreen(project: project)),
-                        ),
-                      ),
-                    ),
-                  );
-                }
+                Navigator.push(
+                  context, 
+                  MaterialPageRoute(
+                    builder: (context) => NotificationScreen(
+                      user: _currentUser!,
+                      selectedProject: _selectedProject,
+                    )
+                  )
+                );
               },
               child: const Text('View All'),
             ),
@@ -439,7 +541,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         FutureBuilder<List<dynamic>>(
-          future: _apiService.getRecentActivity(projectId: projectId),
+          future: _apiService.getRecentActivity(projectId: projectId, userId: _currentUser!.id),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

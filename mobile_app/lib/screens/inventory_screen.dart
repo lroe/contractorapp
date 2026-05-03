@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../models/models.dart';
 import '../services/api_service.dart';
 
@@ -103,11 +105,57 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                items: _materials.map((m) => DropdownMenuItem(value: m['id'].toString(), child: Text('${m['name']} (${m['unit']})'))).toList(),
-                onChanged: (val) => setModalState(() => selectedMaterialId = val),
+              Text('Search or Select Material', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Autocomplete<Map<String, dynamic>>(
+                displayStringForOption: (option) => '${option['name']} (${option['unit']})',
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  final list = _materials.cast<Map<String, dynamic>>();
+                  if (textEditingValue.text.isEmpty) {
+                    return list;
+                  }
+                  return list.where((m) => m['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                },
+                onSelected: (selection) => setModalState(() => selectedMaterialId = selection['id'].toString()),
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Type to search material...',
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      suffixIcon: const Icon(Icons.search, size: 20),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: MediaQuery.of(context).size.width - 48,
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option['name']),
+                              subtitle: Text(option['unit']),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
 
@@ -124,7 +172,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               const SizedBox(height: 8),
               TextField(
                 controller: remarksController,
-                decoration: InputDecoration(hintText: 'e.g. For plastering work', filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                decoration: InputDecoration(hintText: 'e.g. For site work', filled: true, fillColor: const Color(0xFFF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
               ),
               const SizedBox(height: 24),
 
@@ -194,7 +242,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   'unit': unitController.text,
                   'category': selectedCategory,
                 });
-                _loadData();
+                await _loadData(); // Re-fetch all materials
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
               }
@@ -360,23 +408,186 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                 ElevatedButton(onPressed: () => _updateRequest(req['id'], 'approved'), style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12)), child: const Text('Approve')),
               ],
               if (!isOwner && status == 'approved') ...[
-                ElevatedButton(onPressed: () => _updateRequest(req['id'], 'received'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white), child: const Text('Mark Received')),
+                ElevatedButton(
+                  onPressed: () => _showDeliveryConfirmDialog(req['id']),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                  child: const Text('Mark Received'),
+                ),
               ]
             ]),
             if (req['remarks'] != null && req['remarks'].isNotEmpty)
-              Padding(padding: const EdgeInsets.only(top: 8), child: Text('Note: ${req['remarks']}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey))),
+              Padding(padding: const EdgeInsets.only(top: 8), child: Text('📋 Request note: ${req['remarks']}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey))),
+            if (req['received_remarks'] != null && req['received_remarks'].isNotEmpty)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text('✅ Delivery note: ${req['received_remarks']}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.green))),
+            if ((req['media'] as List?)?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 70,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: (req['media'] as List).length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 6),
+                  itemBuilder: (context, idx) {
+                    final mediaUrl = req['media'][idx]['media_url'];
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        'http://localhost:8000$mediaUrl',
+                        width: 70, height: 70, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ]),
         );
       },
     );
   }
 
-  Future<void> _updateRequest(String id, String status) async {
+  Future<void> _updateRequest(String id, String status, {String? remarks}) async {
     try {
-      await _apiService.updateMaterialRequestStatus(id, status);
+      await _apiService.updateMaterialRequestStatus(id, status, receivedRemarks: remarks);
       _loadData();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  void _showDeliveryConfirmDialog(String requestId) {
+    final remarksController = TextEditingController();
+    final List<XFile> photos = [];
+    final picker = ImagePicker();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4)))),
+              const SizedBox(height: 20),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.local_shipping_outlined, color: Colors.green),
+                ),
+                const SizedBox(width: 12),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Confirm Delivery', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('Add optional note & photos', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                ]),
+              ]),
+              const SizedBox(height: 24),
+              Text('Delivery Remarks (Optional)', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
+              const SizedBox(height: 8),
+              TextField(
+                controller: remarksController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'e.g. All 50 bags received in good condition',
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Delivery Photos (Optional)', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final picked = await picker.pickMultiImage();
+                      if (picked.isNotEmpty) setModalState(() => photos.addAll(picked));
+                    },
+                    icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                    label: const Text('Add Photos'),
+                  ),
+                ],
+              ),
+              if (photos.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 80,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: photos.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.file(File(photos[i].path), width: 80, height: 80, fit: BoxFit.cover),
+                        ),
+                        Positioned(
+                          top: 2, right: 2,
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => photos.removeAt(i)),
+                            child: Container(
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              child: const Icon(Icons.close, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    try {
+                      await _apiService.updateMaterialRequestStatus(
+                        requestId, 'received',
+                        receivedRemarks: remarksController.text.isNotEmpty ? remarksController.text : null,
+                      );
+                      if (photos.isNotEmpty) {
+                        await _apiService.uploadMaterialRequestMedia(
+                          requestId,
+                          photos.map((f) => f.path).toList(),
+                        );
+                      }
+                      _loadData();
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Delivery confirmed! ✅'), backgroundColor: Colors.green),
+                      );
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text('Confirm Delivery', style: GoogleFonts.outfit(fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

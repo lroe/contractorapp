@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 import uuid
+from datetime import date
 
 # User CRUD
 def get_user(db: Session, user_id: uuid.UUID):
@@ -82,19 +83,7 @@ def get_workers_by_gang(db: Session, gang_id: uuid.UUID):
     return db.query(models.Worker).filter(models.Worker.gang_id == gang_id).all()
 
 # Attendance CRUD
-def mark_attendance(db: Session, project_id: uuid.UUID, worker_id: uuid.UUID, gang_id: uuid.UUID, entry_date: any, status: str, marked_by: uuid.UUID):
-    db_attendance = models.Attendance(
-        project_id=project_id,
-        worker_id=worker_id,
-        gang_id=gang_id,
-        entry_date=entry_date,
-        status=status,
-        marked_by=marked_by
-    )
-    db.add(db_attendance)
-    db.commit()
-    db.refresh(db_attendance)
-    return db_attendance
+# Redundant function removed (replaced by schemas-based version)
 
 # Project User CRUD
 def assign_user_to_project(db: Session, project_id: uuid.UUID, user_id: uuid.UUID, role: str):
@@ -109,6 +98,16 @@ def get_project_supervisors(db: Session, project_id: uuid.UUID):
         models.ProjectUser.project_id == project_id,
         models.ProjectUser.role == 'supervisor'
     ).all()
+
+def unassign_user_from_project(db: Session, project_id: uuid.UUID, user_id: uuid.UUID):
+    db_pu = db.query(models.ProjectUser).filter(
+        models.ProjectUser.project_id == project_id,
+        models.ProjectUser.user_id == user_id
+    ).first()
+    if db_pu:
+        db.delete(db_pu)
+        db.commit()
+    return True
 
 # Materials
 def get_materials(db: Session):
@@ -156,16 +155,26 @@ def create_material_request(db: Session, request: schemas.MaterialRequestCreate)
 def get_material_requests(db: Session, project_id: uuid.UUID):
     return db.query(models.MaterialRequest).filter(models.MaterialRequest.project_id == project_id).all()
 
-def update_material_request_status(db: Session, request_id: uuid.UUID, status: str):
+def update_material_request_status(db: Session, request_id: uuid.UUID, status: str, received_remarks: str = None):
     db_request = db.query(models.MaterialRequest).filter(models.MaterialRequest.id == request_id).first()
     if db_request:
-        db_request.status = status
-        # If received, auto-update inventory
-        if status == "received":
+        # If approved or received, auto-update inventory (only if not already done)
+        if status in ["approved", "received"] and db_request.status not in ["approved", "received"]:
             update_inventory(db, db_request.project_id, db_request.material_id, float(db_request.quantity))
+        
+        db_request.status = status
+        if received_remarks:
+            db_request.received_remarks = received_remarks
         db.commit()
         db.refresh(db_request)
     return db_request
+
+def create_material_request_media(db: Session, request_id: uuid.UUID, media_url: str):
+    db_media = models.MaterialRequestMedia(request_id=request_id, media_url=media_url)
+    db.add(db_media)
+    db.commit()
+    db.refresh(db_media)
+    return db_media
 
 # Usage
 def log_material_usage(db: Session, usage: schemas.MaterialUsageCreate):
@@ -226,3 +235,20 @@ def mark_attendance(db: Session, attendance: schemas.AttendanceCreate):
     db.commit()
     db.refresh(db_att)
     return db_att
+
+def get_gang_attendance(db: Session, gang_id: uuid.UUID, date: date):
+    return db.query(models.Attendance).filter(
+        models.Attendance.gang_id == gang_id,
+        models.Attendance.entry_date == date
+    ).all()
+
+# Project Document CRUD
+def create_project_document(db: Session, document: schemas.ProjectDocumentCreate):
+    db_doc = models.ProjectDocument(**document.dict())
+    db.add(db_doc)
+    db.commit()
+    db.refresh(db_doc)
+    return db_doc
+
+def get_project_documents(db: Session, project_id: uuid.UUID):
+    return db.query(models.ProjectDocument).filter(models.ProjectDocument.project_id == project_id).order_by(models.ProjectDocument.uploaded_at.desc()).all()
