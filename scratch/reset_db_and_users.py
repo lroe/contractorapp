@@ -21,14 +21,20 @@ def reset_everything():
     users_to_create = [
         {
             "name": "suhail",
-            "phone": "9999999999", # Arbitrary phone since it's required and unique
+            "phone": "9999999999",
             "role": "owner",
             "password": "pass123"
         },
         {
             "name": "jeevan",
-            "phone": "8888888888", # Arbitrary phone
+            "phone": "8888888888",
             "role": "supervisor",
+            "password": "pass123"
+        },
+        {
+            "name": "store",
+            "phone": "7777777777",
+            "role": "material_manager",
             "password": "pass123"
         }
     ]

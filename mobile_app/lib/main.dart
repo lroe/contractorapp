@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'models/models.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/material_manager_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +47,10 @@ class ContractorApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/material-manager': (context) {
+          final user = ModalRoute.of(context)!.settings.arguments as User;
+          return MaterialManagerScreen(user: user);
+        },
       },
     );
   }

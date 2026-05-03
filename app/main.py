@@ -556,3 +556,144 @@ def get_dashboard_stats(
             "stat2_label": "Active Tasks",
             "stat2_value": str(in_progress_tasks).zfill(2)
         }
+
+# ─── User Management ──────────────────────────────────────────────────────────
+
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    import bcrypt
+    hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
+    db_user = models.User(
+        name=user.name,
+        phone=user.phone,
+        email=user.email,
+        role=user.role,
+        password_hash=hashed,
+        is_active=True,
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@app.get("/users/", response_model=List[schemas.User])
+def list_users(role: Optional[str] = None, db: Session = Depends(get_db)):
+    q = db.query(models.User)
+    if role:
+        q = q.filter(models.User.role == role)
+    return q.all()
+
+# ─── Vendor Routes ────────────────────────────────────────────────────────────
+
+@app.post("/vendors/", response_model=schemas.Vendor)
+def create_vendor(vendor: schemas.VendorCreate, db: Session = Depends(get_db)):
+    return crud.create_vendor(db, vendor)
+
+@app.get("/vendors/", response_model=List[schemas.Vendor])
+def list_vendors(db: Session = Depends(get_db)):
+    return crud.get_vendors(db)
+
+@app.post("/vendor-prices/", response_model=schemas.VendorPrice)
+def create_vendor_price(price: schemas.VendorPriceCreate, db: Session = Depends(get_db)):
+    return crud.create_vendor_price(db, price)
+
+@app.get("/vendor-prices/")
+def list_vendor_prices(material_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_vendor_prices(db, material_id)
+
+# ─── Purchase Order Routes ────────────────────────────────────────────────────
+
+@app.post("/purchase-orders/", response_model=schemas.PurchaseOrder)
+async def create_purchase_order(po: schemas.PurchaseOrderCreate, db: Session = Depends(get_db)):
+    db_po = crud.create_purchase_order(db, po)
+    await manager.broadcast({"type": "NEW_PO", "project_id": str(db_po.project_id)})
+    return db_po
+
+@app.get("/purchase-orders/")
+def list_purchase_orders(project_id: Optional[uuid.UUID] = None, db: Session = Depends(get_db)):
+    return crud.get_purchase_orders(db, project_id)
+
+@app.patch("/purchase-orders/{po_id}/status")
+async def update_po_status(po_id: uuid.UUID, update: schemas.PurchaseOrderStatusUpdate, db: Session = Depends(get_db)):
+    db_po = crud.update_po_status(db, po_id, update.status, update.approved_by)
+    await manager.broadcast({"type": "PO_UPDATED", "project_id": str(db_po.project_id)})
+    return db_po
+
+# ─── BOQ Routes ───────────────────────────────────────────────────────────────
+
+@app.post("/boq/", response_model=schemas.BOQItem)
+def upsert_boq(boq: schemas.BOQItemCreate, db: Session = Depends(get_db)):
+    return crud.upsert_boq_item(db, boq)
+
+@app.get("/projects/{project_id}/boq/")
+def get_boq(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_boq_with_actuals(db, project_id)
+
+# ─── Stock Ledger Routes ──────────────────────────────────────────────────────
+
+@app.get("/projects/{project_id}/stock-ledger/", response_model=List[schemas.StockLedgerEntry])
+def get_stock_ledger(project_id: uuid.UUID, material_id: Optional[uuid.UUID] = None, db: Session = Depends(get_db)):
+    return crud.get_stock_ledger(db, project_id, material_id)
+
+@app.post("/stock-ledger/log/")
+def log_manual_stock(
+    project_id: uuid.UUID,
+    material_id: uuid.UUID,
+    movement_type: str,
+    quantity: float,
+    logged_by: uuid.UUID,
+    remarks: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    return crud.log_stock_movement(db, project_id, material_id, movement_type, quantity, logged_by, remarks=remarks)
+
+# ─── Transfer Note Routes ─────────────────────────────────────────────────────
+
+@app.post("/transfer-notes/", response_model=schemas.TransferNote)
+async def create_transfer_note(transfer: schemas.TransferNoteCreate, db: Session = Depends(get_db)):
+    db_t = crud.create_transfer_note(db, transfer)
+    await manager.broadcast({"type": "NEW_TRANSFER", "project_id": str(db_t.to_project_id)})
+    return db_t
+
+@app.get("/projects/{project_id}/transfer-notes/")
+def get_transfer_notes(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_transfer_notes(db, project_id)
+
+@app.patch("/transfer-notes/{transfer_id}/receive")
+def receive_transfer(transfer_id: uuid.UUID, received_by: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.confirm_transfer_received(db, transfer_id, received_by)
+
+# ─── Waste Log Routes ─────────────────────────────────────────────────────────
+
+@app.post("/waste-logs/", response_model=schemas.WasteLog)
+def log_waste(waste: schemas.WasteLogCreate, db: Session = Depends(get_db)):
+    return crud.log_waste(db, waste)
+
+@app.get("/projects/{project_id}/waste-logs/")
+def get_waste_logs(project_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_waste_logs(db, project_id)
+
+# ─── Low Stock Alerts ─────────────────────────────────────────────────────────
+
+@app.get("/low-stock-alerts/")
+def get_low_stock_alerts(owner_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_low_stock_alerts(db, owner_id)
+
+# ─── Material Manager Dashboard Stats ────────────────────────────────────────
+
+@app.get("/material-manager/dashboard/")
+def material_manager_dashboard(db: Session = Depends(get_db)):
+    total_pos = db.query(models.PurchaseOrder).filter(
+        models.PurchaseOrder.status == 'draft'
+    ).count()
+    total_vendors = db.query(models.Vendor).filter(models.Vendor.is_active == True).count()
+    total_materials = db.query(models.Material).count()
+    pending_transfers = db.query(models.TransferNote).filter(
+        models.TransferNote.status == 'pending'
+    ).count()
+    return {
+        "pending_pos": total_pos,
+        "active_vendors": total_vendors,
+        "total_materials": total_materials,
+        "pending_transfers": pending_transfers,
+    }

@@ -296,3 +296,155 @@ class ProjectDocument(ProjectDocumentBase):
 
     class Config:
         from_attributes = True
+
+# ─── Vendor Schemas ────────────────────────────────────────────────────────────
+
+class VendorBase(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    gstin: Optional[str] = None
+
+class VendorCreate(VendorBase):
+    pass
+
+class Vendor(VendorBase):
+    id: UUID
+    is_active: bool
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+class VendorPriceBase(BaseModel):
+    vendor_id: UUID
+    material_id: UUID
+    price_per_unit: Decimal
+    effective_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class VendorPriceCreate(VendorPriceBase):
+    pass
+
+class VendorPrice(VendorPriceBase):
+    id: UUID
+    vendor: Optional[Vendor] = None
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# ─── Purchase Order Schemas ────────────────────────────────────────────────────
+
+class PurchaseOrderItemBase(BaseModel):
+    material_id: UUID
+    quantity: Decimal
+    unit_price: Decimal = 0
+
+class PurchaseOrderItemCreate(PurchaseOrderItemBase):
+    pass
+
+class PurchaseOrderItem(PurchaseOrderItemBase):
+    id: UUID
+    received_quantity: Decimal = 0
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+class PurchaseOrderBase(BaseModel):
+    project_id: UUID
+    vendor_id: UUID
+    expected_delivery: Optional[date] = None
+    remarks: Optional[str] = None
+
+class PurchaseOrderCreate(PurchaseOrderBase):
+    raised_by: UUID
+    items: List[PurchaseOrderItemCreate]
+
+class PurchaseOrder(PurchaseOrderBase):
+    id: UUID
+    po_number: Optional[str] = None
+    status: str
+    total_amount: Decimal
+    raised_by: UUID
+    approved_by: Optional[UUID] = None
+    created_at: datetime
+    items: List[PurchaseOrderItem] = []
+    vendor: Optional[Vendor] = None
+    class Config:
+        from_attributes = True
+
+class PurchaseOrderStatusUpdate(BaseModel):
+    status: str
+    approved_by: Optional[UUID] = None
+
+# ─── Stock Ledger ──────────────────────────────────────────────────────────────
+
+class StockLedgerEntry(BaseModel):
+    id: UUID
+    project_id: UUID
+    material_id: UUID
+    movement_type: str
+    quantity: Decimal
+    reference_type: Optional[str] = None
+    remarks: Optional[str] = None
+    entry_date: date
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# ─── BOQ Schemas ───────────────────────────────────────────────────────────────
+
+class BOQItemBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    planned_quantity: Decimal
+    description: Optional[str] = None
+
+class BOQItemCreate(BOQItemBase):
+    pass
+
+class BOQItem(BOQItemBase):
+    id: UUID
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# ─── Transfer Note Schemas ─────────────────────────────────────────────────────
+
+class TransferNoteBase(BaseModel):
+    from_project_id: UUID
+    to_project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    remarks: Optional[str] = None
+
+class TransferNoteCreate(TransferNoteBase):
+    raised_by: UUID
+
+class TransferNote(TransferNoteBase):
+    id: UUID
+    status: str
+    raised_by: UUID
+    created_at: datetime
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True
+
+# ─── Waste Log Schemas ─────────────────────────────────────────────────────────
+
+class WasteLogBase(BaseModel):
+    project_id: UUID
+    material_id: UUID
+    quantity: Decimal
+    reason: Optional[str] = None
+    entry_date: Optional[date] = None
+
+class WasteLogCreate(WasteLogBase):
+    logged_by: UUID
+
+class WasteLog(WasteLogBase):
+    id: UUID
+    created_at: datetime
+    material: Optional[Material] = None
+    class Config:
+        from_attributes = True

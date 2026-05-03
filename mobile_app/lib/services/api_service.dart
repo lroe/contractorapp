@@ -455,4 +455,138 @@ class ApiService {
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to load dashboard stats');
   }
+
+  // ─── Vendor Methods ─────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getVendors() async {
+    final r = await http.get(Uri.parse('$baseUrl/vendors/'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load vendors');
+  }
+
+  Future<Map<String, dynamic>> createVendor(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/vendors/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to create vendor');
+  }
+
+  Future<List<dynamic>> getVendorPrices(String materialId) async {
+    final r = await http.get(Uri.parse('$baseUrl/vendor-prices/?material_id=$materialId'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load vendor prices');
+  }
+
+  Future<void> createVendorPrice(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/vendor-prices/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode != 200) throw Exception('Failed to save vendor price');
+  }
+
+  // ─── Purchase Order Methods ─────────────────────────────────────────────────
+
+  Future<List<dynamic>> getPurchaseOrders({String? projectId}) async {
+    final url = projectId != null
+        ? '$baseUrl/purchase-orders/?project_id=$projectId'
+        : '$baseUrl/purchase-orders/';
+    final r = await http.get(Uri.parse(url));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load purchase orders');
+  }
+
+  Future<Map<String, dynamic>> createPurchaseOrder(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/purchase-orders/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to create PO: ${r.body}');
+  }
+
+  Future<void> updatePOStatus(String poId, String status, {String? approvedBy}) async {
+    final body = {'status': status, if (approvedBy != null) 'approved_by': approvedBy};
+    final r = await http.patch(Uri.parse('$baseUrl/purchase-orders/$poId/status'), headers: _headers, body: jsonEncode(body));
+    if (r.statusCode != 200) throw Exception('Failed to update PO status');
+  }
+
+  // ─── BOQ Methods ─────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getBOQ(String projectId) async {
+    final r = await http.get(Uri.parse('$baseUrl/projects/$projectId/boq/'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load BOQ');
+  }
+
+  Future<void> upsertBOQItem(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/boq/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode != 200) throw Exception('Failed to save BOQ item');
+  }
+
+  // ─── Stock Ledger Methods ─────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getStockLedger(String projectId, {String? materialId}) async {
+    final url = materialId != null
+        ? '$baseUrl/projects/$projectId/stock-ledger/?material_id=$materialId'
+        : '$baseUrl/projects/$projectId/stock-ledger/';
+    final r = await http.get(Uri.parse(url));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load stock ledger');
+  }
+
+  // ─── Transfer Notes ────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getTransferNotes(String projectId) async {
+    final r = await http.get(Uri.parse('$baseUrl/projects/$projectId/transfer-notes/'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load transfer notes');
+  }
+
+  Future<void> createTransferNote(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/transfer-notes/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode != 200) throw Exception('Failed to create transfer note');
+  }
+
+  Future<void> receiveTransfer(String transferId, String receivedBy) async {
+    final r = await http.patch(Uri.parse('$baseUrl/transfer-notes/$transferId/receive?received_by=$receivedBy'));
+    if (r.statusCode != 200) throw Exception('Failed to confirm transfer');
+  }
+
+  // ─── Waste Logs ────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getWasteLogs(String projectId) async {
+    final r = await http.get(Uri.parse('$baseUrl/projects/$projectId/waste-logs/'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load waste logs');
+  }
+
+  Future<void> logWaste(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/waste-logs/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode != 200) throw Exception('Failed to log waste: ${r.body}');
+  }
+
+  // ─── Material Manager Dashboard ────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getMaterialManagerDashboard() async {
+    final r = await http.get(Uri.parse('$baseUrl/material-manager/dashboard/'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load material manager dashboard');
+  }
+
+  Future<List<dynamic>> getLowStockAlerts(String ownerId) async {
+    final r = await http.get(Uri.parse('$baseUrl/low-stock-alerts/?owner_id=$ownerId'));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to load low stock alerts');
+  }
+
+  // ─── User Management ───────────────────────────────────────────────────────
+
+  Future<List<dynamic>> listUsers({String? role}) async {
+    final url = role != null ? '$baseUrl/users/?role=$role' : '$baseUrl/users/';
+    final r = await http.get(Uri.parse(url));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to list users');
+  }
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> data) async {
+    final r = await http.post(Uri.parse('$baseUrl/users/'), headers: _headers, body: jsonEncode(data));
+    if (r.statusCode == 200) return json.decode(r.body);
+    throw Exception('Failed to create user: ${r.body}');
+  }
+
+  Map<String, String> get _headers => {"Content-Type": "application/json"};
 }

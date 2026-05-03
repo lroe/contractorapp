@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Date, Numeric, Text, UniqueConstraint, CheckConstraint
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Date, Numeric, Text, UniqueConstraint, CheckConstraint, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -17,7 +17,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
-        CheckConstraint(role.in_(['owner', 'supervisor']), name='user_role_check'),
+        CheckConstraint(role.in_(['owner', 'supervisor', 'material_manager']), name='user_role_check'),
     )
 
 class Project(Base):
@@ -40,7 +40,6 @@ class ProjectUser(Base):
 
     __table_args__ = (
         UniqueConstraint('project_id', 'user_id', name='_project_user_uc'),
-        CheckConstraint(role.in_(['owner', 'supervisor']), name='project_user_role_check'),
     )
 
 class WorkType(Base):
@@ -48,58 +47,50 @@ class WorkType(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
     unit = Column(String(20))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    rate_per_unit = Column(Numeric(10, 2))
 
 class Block(Base):
     __tablename__ = "blocks"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    name = Column(String(50), nullable=False)
-    __table_args__ = (UniqueConstraint('project_id', 'name', name='_block_project_uc'),)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    name = Column(String(100), nullable=False)
 
 class Floor(Base):
     __tablename__ = "floors"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id", ondelete="CASCADE"))
-    name = Column(String(50), nullable=False)
-    __table_args__ = (UniqueConstraint('block_id', 'name', name='_floor_block_uc'),)
+    name = Column(String(100), nullable=False)
 
 class Area(Base):
     __tablename__ = "areas"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     floor_id = Column(UUID(as_uuid=True), ForeignKey("floors.id", ondelete="CASCADE"))
     name = Column(String(100), nullable=False)
-    __table_args__ = (UniqueConstraint('floor_id', 'name', name='_area_floor_uc'),)
 
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
     name = Column(String(200), nullable=False)
-    work_type_id = Column(UUID(as_uuid=True), ForeignKey("work_types.id"), index=True, nullable=True)
-    block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id"), index=True)
-    floor_id = Column(UUID(as_uuid=True), ForeignKey("floors.id"), index=True)
-    area_id = Column(UUID(as_uuid=True), ForeignKey("areas.id"), index=True)
-    target_quantity = Column(Numeric(12, 2), nullable=True)
+    work_type_id = Column(UUID(as_uuid=True), ForeignKey("work_types.id"), nullable=True)
+    block_id = Column(UUID(as_uuid=True), ForeignKey("blocks.id"), nullable=True)
+    floor_id = Column(UUID(as_uuid=True), ForeignKey("floors.id"), nullable=True)
+    area_id = Column(UUID(as_uuid=True), ForeignKey("areas.id"), nullable=True)
+    target_quantity = Column(Numeric(12, 2), default=0)
     unit = Column(String(20))
     deadline = Column(Date)
     status = Column(String(20), default="pending")
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        CheckConstraint(status.in_(['pending', 'in_progress', 'completed']), name='task_status_check'),
-    )
 
 class Worker(Base):
     __tablename__ = "workers"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
     name = Column(String(100), nullable=False)
     phone = Column(String(20))
     skill_type = Column(String(50))
-    gang_id = Column(UUID(as_uuid=True)) # ForeignKey added below after Gang is defined
+    gang_id = Column(UUID(as_uuid=True))
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -132,7 +123,7 @@ class DPRMedia(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dpr_entry_id = Column(UUID(as_uuid=True), ForeignKey("dpr_entries.id", ondelete="CASCADE"))
     media_url = Column(Text, nullable=False)
-    media_type = Column(String(20), default="photo") # photo, video
+    media_type = Column(String(20), default="photo")
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
 class Attendance(Base):
@@ -151,12 +142,67 @@ class Attendance(Base):
         CheckConstraint(status.in_(['present', 'absent', 'half_day']), name='attendance_status_check'),
     )
 
+# ─── Material Management ──────────────────────────────────────────────────────
+
 class Material(Base):
     __tablename__ = "materials"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False, unique=True)
-    unit = Column(String(20), nullable=False) # Bags, Tons, Cum, Units
-    category = Column(String(50)) # e.g. Structural, Finishing, Plumbing
+    unit = Column(String(20), nullable=False)
+    category = Column(String(50))
+    min_stock_level = Column(Numeric(12, 2), default=0)  # For low-stock alerts
+
+class Vendor(Base):
+    __tablename__ = "vendors"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(150), nullable=False)
+    phone = Column(String(20))
+    email = Column(String(100))
+    address = Column(Text)
+    gstin = Column(String(20))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class VendorPrice(Base):
+    """Tracks price per unit for a material from a given vendor."""
+    __tablename__ = "vendor_prices"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id", ondelete="CASCADE"), index=True)
+    price_per_unit = Column(Numeric(12, 2), nullable=False)
+    effective_date = Column(Date, default=datetime.utcnow)
+    notes = Column(Text)
+
+    vendor = relationship("Vendor")
+    material = relationship("Material")
+
+class PurchaseOrder(Base):
+    __tablename__ = "purchase_orders"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("vendors.id"), index=True)
+    po_number = Column(String(50), unique=True)
+    status = Column(String(20), default="draft")  # draft, sent, partially_received, received, cancelled
+    total_amount = Column(Numeric(14, 2), default=0)
+    raised_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    expected_delivery = Column(Date, nullable=True)
+    remarks = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    items = relationship("PurchaseOrderItem", backref="purchase_order", cascade="all, delete-orphan")
+    vendor = relationship("Vendor")
+
+class PurchaseOrderItem(Base):
+    __tablename__ = "purchase_order_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    po_id = Column(UUID(as_uuid=True), ForeignKey("purchase_orders.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    quantity = Column(Numeric(12, 2), nullable=False)
+    unit_price = Column(Numeric(12, 2), default=0)
+    received_quantity = Column(Numeric(12, 2), default=0)
+
+    material = relationship("Material")
 
 class ProjectInventory(Base):
     __tablename__ = "project_inventory"
@@ -166,9 +212,28 @@ class ProjectInventory(Base):
     current_quantity = Column(Numeric(12, 2), default=0)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    material = relationship("Material")
+
     __table_args__ = (
         UniqueConstraint('project_id', 'material_id', name='_project_material_inventory_uc'),
     )
+
+class StockLedger(Base):
+    """Every stock movement is recorded here for full auditability."""
+    __tablename__ = "stock_ledger"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    movement_type = Column(String(20), nullable=False)  # inward, outward, wastage, transfer_in, transfer_out
+    quantity = Column(Numeric(12, 2), nullable=False)
+    reference_type = Column(String(30))  # material_request, purchase_order, transfer_note, waste_log, dpr
+    reference_id = Column(UUID(as_uuid=True), nullable=True)
+    remarks = Column(Text)
+    logged_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    entry_date = Column(Date, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    material = relationship("Material")
 
 class MaterialRequest(Base):
     __tablename__ = "material_requests"
@@ -177,7 +242,7 @@ class MaterialRequest(Base):
     material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
     quantity = Column(Numeric(12, 2), nullable=False)
     requested_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    status = Column(String(20), default="pending") # pending, approved, rejected, received
+    status = Column(String(20), default="pending")  # pending, approved, rejected, received
     remarks = Column(Text)
     received_remarks = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -189,6 +254,51 @@ class MaterialRequestMedia(Base):
     request_id = Column(UUID(as_uuid=True), ForeignKey("material_requests.id", ondelete="CASCADE"))
     media_url = Column(Text, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+class TransferNote(Base):
+    """Inter-site material transfer between projects/stores."""
+    __tablename__ = "transfer_notes"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    from_project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
+    to_project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    quantity = Column(Numeric(12, 2), nullable=False)
+    status = Column(String(20), default="pending")  # pending, in_transit, received
+    raised_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    remarks = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    material = relationship("Material")
+
+class BOQItem(Base):
+    """Bill of Quantities — planned material quantities for a project."""
+    __tablename__ = "boq_items"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    planned_quantity = Column(Numeric(12, 2), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    material = relationship("Material")
+
+    __table_args__ = (
+        UniqueConstraint('project_id', 'material_id', name='_project_boq_material_uc'),
+    )
+
+class WasteLog(Base):
+    """Records material wastage on site."""
+    __tablename__ = "waste_logs"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
+    quantity = Column(Numeric(12, 2), nullable=False)
+    reason = Column(Text)
+    logged_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    entry_date = Column(Date, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    material = relationship("Material")
 
 class MaterialUsage(Base):
     __tablename__ = "material_usage"
@@ -206,10 +316,9 @@ class Transaction(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"))
     type = Column(String)  # INCOME or EXPENSE
-    category = Column(String)  # Materials, Wages, Fuel, Transport, Food, Other
-    amount = Column(Numeric(10, 2))
-    remarks = Column(Text, nullable=True)
-    receipt_url = Column(String, nullable=True)
+    category = Column(String)
+    amount = Column(Numeric(14, 2), nullable=False)
+    description = Column(Text)
     transaction_date = Column(Date, default=datetime.utcnow)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -218,8 +327,7 @@ class ProjectDocument(Base):
     __tablename__ = "project_documents"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    name = Column(String(200), nullable=False)
+    file_name = Column(String(255), nullable=False)
     file_url = Column(Text, nullable=False)
-    file_type = Column(String(50)) # pdf, docx, jpg, etc.
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     uploaded_at = Column(DateTime, default=datetime.utcnow)
