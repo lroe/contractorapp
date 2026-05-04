@@ -108,6 +108,10 @@ def auth_google_callback():
         token = oauth.google.authorize_access_token()
         userinfo = oauth.google.get('userinfo').json()
     except Exception as e:
+        with open('scratch/google_error.log', 'a') as f:
+            import traceback
+            f.write(f"Google Auth Error: {e}\n")
+            f.write(traceback.format_exc() + "\n")
         print(f"Google Auth Error: {e}")
         flash(f'Google login failed: {str(e)}', 'error')
         return redirect(url_for('login'))
@@ -142,6 +146,8 @@ def auth_google_callback():
             db.commit()
 
     if user.role not in ('owner', 'supervisor', 'material_manager'):
+        with open('scratch/google_error.log', 'a') as f:
+            f.write(f"Role Error: Access denied for email={email}, role={user.role}\n")
         close_db(db)
         flash('Access denied. This portal is for Owners and Supervisors only.', 'error')
         return redirect(url_for('login'))
