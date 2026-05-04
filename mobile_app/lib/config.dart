@@ -1,1 +1,1 @@
-const String baseUrl = 'http://64.227.149.142:8000';
+const String baseUrl = 'http://app.guidee.me/api';
