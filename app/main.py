@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, inspect, text
 from typing import List, Optional
 import uuid
 import os
@@ -19,6 +19,28 @@ from google.auth.transport import requests as google_requests
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)
+
+# Ensure missing production columns are added safely.
+def ensure_database_schema():
+    inspector = inspect(engine)
+    with engine.connect() as conn:
+        if "transactions" in inspector.get_table_names():
+            tx_columns = [col["name"] for col in inspector.get_columns("transactions")]
+            if "created_by" not in tx_columns:
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_by UUID"))
+
+        if "documents" in inspector.get_table_names():
+            doc_columns = [col["name"] for col in inspector.get_columns("documents")]
+            if "file_name" not in doc_columns:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(200)"))
+            if "uploaded_at" not in doc_columns:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP"))
+            if "title" in doc_columns and "file_name" in doc_columns:
+                conn.execute(text("UPDATE documents SET file_name = title WHERE file_name IS NULL"))
+            if "created_at" in doc_columns and "uploaded_at" in doc_columns:
+                conn.execute(text("UPDATE documents SET uploaded_at = created_at WHERE uploaded_at IS NULL"))
+
+ensure_database_schema()
 
 app = FastAPI(title="Contractor DB API")
 
