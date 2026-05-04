@@ -21,14 +21,23 @@ class Organization(OrganizationBase):
 
 # User Schemas
 class UserBase(BaseModel):
-    organization_id: UUID
+    organization_id: Optional[UUID] = None
     name: str
-    phone: str
+    phone: Optional[str] = None
     email: Optional[EmailStr] = None
     role: str
 
 class UserCreate(UserBase):
-    password: str
+    password: Optional[str] = None
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+
+class UserInvite(BaseModel):
+    email: EmailStr
+    role: str
+    organization_id: UUID
+    name: Optional[str] = "Invited User"
 
 class User(UserBase):
     id: UUID

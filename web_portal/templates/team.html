@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Team Management - Contractor DB{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Team Management</h1>
+        <p>Invite and manage users in your organization.</p>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('inviteSection').style.display = document.getElementById('inviteSection').style.display === 'none' ? 'block' : 'none'">+ Invite Member</button>
+</div>
+
+<div id="inviteSection" class="card" style="display: none; margin-bottom: 24px; border-left: 4px solid #3b82f6;">
+    <h2 style="margin-bottom: 16px;">Invite New Member</h2>
+    <form method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Name</label>
+            <input type="text" name="name" required placeholder="e.g. John Doe">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Email Address</label>
+            <input type="email" name="email" required placeholder="john@example.com">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Role</label>
+            <select name="role">
+                <option value="supervisor">Supervisor (Limited access)</option>
+                <option value="owner">Owner (Full access)</option>
+            </select>
+        </div>
+        <div style="grid-column: span 2; display: flex; gap: 12px; margin-top: 8px;">
+            <button type="submit" class="btn btn-primary">Send Invite</button>
+            <button type="button" class="btn" style="background: #f1f5f9; color: #475569;" onclick="document.getElementById('inviteSection').style.display='none'">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 16px;">Organization Members</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email / Phone</th>
+                <th>Role</th>
+                <th>Login Method</th>
+                <th>Joined</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td><strong>{{ u.name }}</strong></td>
+                <td>{{ u.email or u.phone }}</td>
+                <td>
+                    <span style="
+                        display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600;
+                        {% if u.role == 'owner' %}background: #DCFCE7; color: #166534;
+                        {% else %}background: #E0E7FF; color: #3730A3;{% endif %}
+                    ">{{ u.role | title }}</span>
+                </td>
+                <td>
+                    <span style="font-size: 12px; color: #64748B;">
+                        {% if u.auth_provider == 'google' %}
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: text-top; margin-right: 4px; color: #EA4335;"><path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg> Google
+                        {% else %}
+                        Password
+                        {% endif %}
+                    </span>
+                </td>
+                <td>{{ u.created_at.strftime('%b %d, %Y') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

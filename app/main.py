@@ -14,6 +14,8 @@ from . import crud, models, schemas
 from .database import SessionLocal, engine, get_db
 
 from fastapi.middleware.cors import CORSMiddleware
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # Create tables
 models.Base.metadata.create_all(bind=engine)
@@ -97,6 +99,55 @@ def login(phone: str, password: str, db: Session = Depends(get_db)):
         "organization_id": db_user.organization_id
     }
 
+@app.post("/auth/google/")
+def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
+    try:
+        # For production, specify audience=CLIENT_ID
+        idinfo = id_token.verify_oauth2_token(request.id_token, google_requests.Request())
+        email = idinfo.get("email")
+        name = idinfo.get("name", "Google User")
+        google_id = idinfo.get("sub")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="No email provided by Google")
+
+        db_user = crud.get_user_by_email(db, email=email)
+        
+        if not db_user:
+            # First time user (not invited) -> create organization & user
+            new_org = models.Organization(name=f"{name}'s Organization")
+            db.add(new_org)
+            db.flush() # Get new_org.id
+            
+            db_user = models.User(
+                organization_id=new_org.id,
+                name=name,
+                email=email,
+                role="owner",
+                auth_provider="google",
+                google_id=google_id
+            )
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+        else:
+            # Update google_id if missing (e.g. they were invited by email only)
+            if not db_user.google_id:
+                db_user.google_id = google_id
+                db_user.auth_provider = "google"
+                db.commit()
+
+        return {
+            "id": db_user.id,
+            "name": db_user.name,
+            "role": db_user.role,
+            "email": db_user.email,
+            "organization_id": db_user.organization_id
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+
 # Users
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -108,6 +159,24 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.get("/users/", response_model=List[schemas.User])
 def list_users(organization_id: uuid.UUID, role: Optional[str] = None, db: Session = Depends(get_db)):
     return crud.get_users(db, organization_id, role)
+
+@app.post("/users/invite/", response_model=schemas.User)
+def invite_user(invite: schemas.UserInvite, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=invite.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="User already exists with this email")
+    
+    new_user = models.User(
+        organization_id=invite.organization_id,
+        name=invite.name,
+        email=invite.email,
+        role=invite.role,
+        auth_provider="google"  # Assume they will login with Google
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 # Projects
 @app.post("/projects/", response_model=schemas.Project)

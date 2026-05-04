@@ -9,9 +9,28 @@ from app import models
 import bcrypt
 from datetime import date, datetime
 import uuid
+from authlib.integrations.flask_client import OAuth
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+# ─── Google OAuth Setup ───────────────────────────────────────────────────────
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    client_kwargs={'scope': 'openid email profile'},
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
+)
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
@@ -69,10 +88,108 @@ def login():
         flash('Invalid credentials.', 'error')
     return render_template('login.html')
 
+@app.route('/login/google')
+def login_google():
+    if not os.getenv('GOOGLE_CLIENT_ID'):
+        flash('Google Login is not configured yet. Please use password login.', 'error')
+        return redirect(url_for('login'))
+    redirect_uri = url_for('auth_google_callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google/callback')
+def auth_google_callback():
+    try:
+        token = oauth.google.authorize_access_token()
+        userinfo = oauth.google.get('userinfo').json()
+    except Exception as e:
+        flash('Google login failed or was canceled.', 'error')
+        return redirect(url_for('login'))
+
+    email = userinfo.get('email')
+    db = get_db()
+    user = db.query(models.User).filter(models.User.email == email).first()
+    
+    if not user:
+        # If user isn't in DB, they haven't been invited, and this is the web portal.
+        # We can either create an org for them or reject. The mobile app handles new signups.
+        # Let's create an org for them here too so they can use the web portal immediately.
+        name = userinfo.get('name', 'Google User')
+        new_org = models.Organization(name=f"{name}'s Organization")
+        db.add(new_org)
+        db.flush()
+        
+        user = models.User(
+            organization_id=new_org.id,
+            name=name,
+            email=email,
+            role="owner",
+            auth_provider="google",
+            google_id=userinfo.get('id')
+        )
+        db.add(user)
+        db.commit()
+    else:
+        if not user.google_id:
+            user.google_id = userinfo.get('id')
+            user.auth_provider = "google"
+            db.commit()
+
+    if user.role not in ('owner', 'supervisor', 'material_manager'):
+        close_db(db)
+        flash('Access denied. This portal is for Owners and Supervisors only.', 'error')
+        return redirect(url_for('login'))
+
+    session['user_id'] = str(user.id)
+    session['user_role'] = user.role
+    session['user_name'] = user.name
+    session['organization_id'] = str(user.organization_id)
+    close_db(db)
+    
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+# ─── Team / Invite ────────────────────────────────────────────────────────────
+@app.route('/team', methods=['GET', 'POST'])
+@login_required
+def team():
+    db = get_db()
+    org_id = uuid.UUID(session['organization_id'])
+    
+    # Restrict to owners
+    if session.get('user_role') != 'owner':
+        flash('Only owners can manage the team.', 'error')
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        name = request.form.get('name', 'Invited User').strip()
+        role = request.form.get('role', 'supervisor')
+        
+        if email:
+            existing = db.query(models.User).filter(models.User.email == email).first()
+            if existing:
+                flash(f'User with email {email} already exists.', 'error')
+            else:
+                new_user = models.User(
+                    organization_id=org_id,
+                    name=name,
+                    email=email,
+                    role=role,
+                    auth_provider="google"
+                )
+                db.add(new_user)
+                db.commit()
+                flash(f'{name} ({email}) has been invited as {role}.', 'success')
+                
+        return redirect(url_for('team'))
+        
+    users = db.query(models.User).filter(models.User.organization_id == org_id).all()
+    close_db(db)
+    return render_template('team.html', users=users)
 
 # ─── Dashboard ────────────────────────────────────────────────────────────────
 @app.route('/dashboard')
