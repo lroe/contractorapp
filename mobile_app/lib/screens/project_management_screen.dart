@@ -33,8 +33,14 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
 
   Future<void> _syncProjects() async {
     if (widget.user == null) return;
+    final orgId = widget.user!.organizationId;
+    if (orgId == null) {
+      debugPrint('Cannot sync projects: user.organizationId is null');
+      return;
+    }
+
     try {
-      final remoteProjects = await ApiService().getProjects(widget.user!.organizationId!, userId: widget.user!.id);
+      final remoteProjects = await ApiService().getProjects(orgId, userId: widget.user!.id);
       await _projectBox.clear();
       await _projectBox.addAll(remoteProjects);
     } catch (e) {
@@ -43,6 +49,12 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
   }
 
   void _showCreateProjectDialog() {
+    if (widget.user == null || widget.user!.organizationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to create project: user organization not available.')),
+      );
+      return;
+    }
     final nameController = TextEditingController();
     showDialog(
       context: context,
@@ -88,7 +100,8 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
         title: Text('My Projects', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         actions: [
-          IconButton(onPressed: _showCreateProjectDialog, icon: const Icon(Icons.add_circle_outline)),
+          if (widget.user != null)
+            IconButton(onPressed: _showCreateProjectDialog, icon: const Icon(Icons.add_circle_outline)),
         ],
       ),
       body: _isLoading

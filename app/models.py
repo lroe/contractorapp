@@ -378,8 +378,10 @@ class Transaction(Base):
     type = Column(String)
     category = Column(String)
     amount = Column(Numeric(14, 2), nullable=False)
-    description = Column(Text)
+    description = Column(Text, nullable=True)
     transaction_date = Column(Date, default=datetime.utcnow)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class Document(Base):
     __tablename__ = "documents"

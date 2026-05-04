@@ -313,6 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => DPRScreen(project: project, user: _currentUser!)),
@@ -330,6 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => ReportsListScreen(project: project)),
@@ -347,6 +349,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => TasksScreen(project: project, user: _currentUser!)),
@@ -364,6 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => InventoryScreen(project: project, user: _currentUser!)),
@@ -381,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => FinanceScreen(project: project, user: _currentUser!)),
@@ -398,6 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
                 onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => AttendanceReportScreen(project: project)),

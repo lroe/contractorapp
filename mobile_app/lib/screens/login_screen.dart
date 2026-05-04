@@ -18,19 +18,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter phone and password')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter phone and password')),
+      );
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final user = await _apiService.login(_phoneController.text, _passwordController.text);
+      final user = await _apiService.login(
+        _phoneController.text,
+        _passwordController.text,
+      );
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home', arguments: user);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -40,12 +47,16 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com'),
         scopes: ['email', 'profile'],
+        serverClientId:
+            '716708862792-o5ctv053av0fuu0i3n463lsg604t3e3i.apps.googleusercontent.com',
       );
+      print('GoogleSignIn init. serverClientId set');
       final GoogleSignInAccount? account = await googleSignIn.signIn();
+      print('GoogleSignIn account: $account');
       if (account != null) {
         final GoogleSignInAuthentication auth = await account.authentication;
+        print('GoogleSignIn auth: idToken=${auth.idToken != null}, accessToken=${auth.accessToken != null}');
         if (auth.idToken != null || auth.accessToken != null) {
           final user = await _apiService.googleLogin(
             idToken: auth.idToken,
@@ -58,11 +69,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       // If we got here, sign in was cancelled or failed without throwing
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Google Sign-In canceled.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google Sign-In canceled.')),
+        );
       }
-    } catch (e) {
+    } catch (e, st) {
+      print('Google Sign-In exception: $e');
+      print(st);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google Sign-In failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Google Sign-In failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -90,23 +107,46 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 48),
-              _buildTextField(_phoneController, 'Phone Number', Icons.phone, TextInputType.phone),
+              _buildTextField(
+                _phoneController,
+                'Phone Number',
+                Icons.phone,
+                TextInputType.phone,
+              ),
               const SizedBox(height: 16),
-              _buildTextField(_passwordController, 'Password', Icons.lock, TextInputType.text, isObscure: true),
+              _buildTextField(
+                _passwordController,
+                'Password',
+                Icons.lock,
+                TextInputType.text,
+                isObscure: true,
+              ),
               const SizedBox(height: 32),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildLoginButton('Login with Password', const Color(0xFF1E293B), _handleLogin),
+                        _buildLoginButton(
+                          'Login with Password',
+                          const Color(0xFF1E293B),
+                          _handleLogin,
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
                             const Expanded(child: Divider()),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text('OR', style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'OR',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                             const Expanded(child: Divider()),
                           ],
@@ -114,11 +154,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: _handleGoogleLogin,
-                          icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png', width: 24, height: 24),
-                          label: const Text('Continue with Google', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
+                          icon: Image.network(
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                          label: const Text(
+                            'Continue with Google',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ],
@@ -136,7 +189,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, TextInputType type, {bool isObscure = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    IconData icon,
+    TextInputType type, {
+    bool isObscure = false,
+  }) {
     return TextField(
       controller: controller,
       keyboardType: type,
@@ -146,7 +205,10 @@ class _LoginScreenState extends State<LoginScreen> {
         prefixIcon: Icon(icon, color: const Color(0xFF64748B)),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
       ),
     );
   }
@@ -160,7 +222,10 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: Text(label, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }
