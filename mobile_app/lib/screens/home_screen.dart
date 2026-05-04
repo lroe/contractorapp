@@ -14,6 +14,7 @@ import '../models/models.dart';
 
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
+import '../config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -597,7 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
-                        'http://localhost:8000${media[0]['media_url']}',
+                        '$baseUrl${media[0]['media_url']}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
                       ),

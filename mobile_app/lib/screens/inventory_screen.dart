@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../config.dart';
 
 class InventoryScreen extends StatefulWidget {
   final Project project;
@@ -657,7 +658,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        'http://localhost:8000$mediaUrl',
+                        '$baseUrl$mediaUrl',
                         width: 70, height: 70, fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40),
                       ),

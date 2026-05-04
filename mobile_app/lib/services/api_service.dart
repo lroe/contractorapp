@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
+import '../config.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000'; 
 
   Future<User> login(String phone, String password) async {
     final response = await http.post(

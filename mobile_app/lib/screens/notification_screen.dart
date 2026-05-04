@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
+import '../config.dart';
 import 'report_detail_screen.dart';
 import 'inventory_screen.dart';
 
@@ -113,7 +114,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
-                        'http://localhost:8000${media[0]['media_url']}',
+                        '$baseUrl${media[0]['media_url']}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
                       ),

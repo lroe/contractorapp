@@ -5,6 +5,7 @@ import 'dart:io';
 import '../services/api_service.dart';
 import '../models/models.dart';
 import 'report_detail_screen.dart';
+import '../config.dart';
 
 class DPRScreen extends StatefulWidget {
   final Project project;
@@ -363,7 +364,7 @@ class ReportsListScreen extends StatelessWidget {
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
-                                  'http://localhost:8000${media[0]['media_url']}',
+                                  '$baseUrl${media[0]['media_url']}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 22),
                                 ),

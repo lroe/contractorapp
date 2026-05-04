@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../config.dart';
 
 /// Full-screen view for a single DPR report entry.
 class ReportDetailScreen extends StatelessWidget {
@@ -110,7 +111,7 @@ class ReportDetailScreen extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final item = media[index];
-              final url = 'http://localhost:8000${item['media_url']}';
+              final url = '$baseUrl${item['media_url']}';
               return GestureDetector(
                 onTap: () {
                   // Show full screen image

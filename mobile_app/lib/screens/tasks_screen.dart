@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../config.dart';
 import 'report_detail_screen.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -488,7 +489,7 @@ class TaskDetailScreen extends StatelessWidget {
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: Image.network(
-                                    'http://localhost:8000${media[0]['media_url']}',
+                                    '$baseUrl${media[0]['media_url']}',
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6), size: 18),
                                   ),
