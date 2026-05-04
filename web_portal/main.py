@@ -14,7 +14,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.secret_key = os.urandom(24)
 
 # ─── Google OAuth Setup ───────────────────────────────────────────────────────
@@ -102,7 +105,8 @@ def auth_google_callback():
         token = oauth.google.authorize_access_token()
         userinfo = oauth.google.get('userinfo').json()
     except Exception as e:
-        flash('Google login failed or was canceled.', 'error')
+        print(f"Google Auth Error: {e}")
+        flash(f'Google login failed: {str(e)}', 'error')
         return redirect(url_for('login'))
 
     email = userinfo.get('email')
