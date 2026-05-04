@@ -19,6 +19,20 @@ class ApiService {
     }
   }
 
+  Future<User> googleLogin(String idToken) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/google/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'id_token': idToken}),
+    );
+
+    if (response.statusCode == 200) {
+      return User.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Google Login Failed: ${response.body}');
+    }
+  }
+
   Future<List<dynamic>> getRecentActivity({required String organizationId, String? projectId, String? userId}) async {
     String url = '$baseUrl/recent-activity/?organization_id=$organizationId';
     if (projectId != null) url += '&project_id=$projectId';
