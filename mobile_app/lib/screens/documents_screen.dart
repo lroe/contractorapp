@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import 'package:intl/intl.dart';
+import '../config.dart';
 
 class DocumentsScreen extends StatefulWidget {
   final String projectId;
@@ -100,7 +101,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Future<void> _openDocument(String url) async {
-    final fullUrl = url.startsWith('http') ? url : '${ApiService.baseUrl}$url';
+    final fullUrl = url.startsWith('http') ? url : '$baseUrl$url';
     final uri = Uri.parse(fullUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
