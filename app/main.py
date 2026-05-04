@@ -102,8 +102,19 @@ def login(phone: str, password: str, db: Session = Depends(get_db)):
 @app.post("/auth/google/")
 def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_db)):
     try:
-        # For production, specify audience=CLIENT_ID
-        idinfo = id_token.verify_oauth2_token(request.id_token, google_requests.Request())
+        import requests
+        if request.id_token:
+            # For production, specify audience=CLIENT_ID
+            idinfo = id_token.verify_oauth2_token(request.id_token, google_requests.Request())
+        elif request.access_token:
+            # Fallback for Web where id_token is not provided reliably
+            resp = requests.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={request.access_token}")
+            if resp.status_code != 200:
+                raise HTTPException(status_code=400, detail="Invalid Google access token")
+            idinfo = resp.json()
+        else:
+            raise HTTPException(status_code=400, detail="Either id_token or access_token must be provided")
+
         email = idinfo.get("email")
         name = idinfo.get("name", "Google User")
         google_id = idinfo.get("sub")

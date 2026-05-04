@@ -184,28 +184,35 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hello, ${user.name}',
-              style: GoogleFonts.outfit(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF1E293B),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hello, ${user.name}',
+                style: GoogleFonts.outfit(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            Text(
-              user.role == 'owner' 
-                  ? 'Business Owner' 
-                  : (_selectedProject != null ? 'Project: ${_selectedProject!.name}' : 'No Project Assigned'),
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                color: const Color(0xFF64748B),
+              Text(
+                user.role == 'owner' 
+                    ? 'Business Owner' 
+                    : (_selectedProject != null ? 'Project: ${_selectedProject!.name}' : 'No Project Assigned'),
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  color: const Color(0xFF64748B),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        const SizedBox(width: 16),
         const CircleAvatar(
           radius: 28,
           backgroundColor: Color(0xFFE2E8F0),

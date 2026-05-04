@@ -40,13 +40,17 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: const String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com'),
         scopes: ['email', 'profile'],
       );
       final GoogleSignInAccount? account = await googleSignIn.signIn();
       if (account != null) {
         final GoogleSignInAuthentication auth = await account.authentication;
-        if (auth.idToken != null) {
-          final user = await _apiService.googleLogin(auth.idToken!);
+        if (auth.idToken != null || auth.accessToken != null) {
+          final user = await _apiService.googleLogin(
+            idToken: auth.idToken,
+            accessToken: auth.accessToken,
+          );
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, '/home', arguments: user);
           return;
@@ -110,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         OutlinedButton.icon(
                           onPressed: _handleGoogleLogin,
-                          icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg', width: 24, height: 24),
+                          icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png', width: 24, height: 24),
                           label: const Text('Continue with Google', style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),

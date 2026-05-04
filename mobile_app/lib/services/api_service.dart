@@ -19,11 +19,14 @@ class ApiService {
     }
   }
 
-  Future<User> googleLogin(String idToken) async {
+  Future<User> googleLogin({String? idToken, String? accessToken}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/google/'),
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({'id_token': idToken}),
+      body: json.encode({
+        if (idToken != null) 'id_token': idToken,
+        if (accessToken != null) 'access_token': accessToken,
+      }),
     );
 
     if (response.statusCode == 200) {

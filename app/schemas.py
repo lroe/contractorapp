@@ -31,7 +31,8 @@ class UserCreate(UserBase):
     password: Optional[str] = None
 
 class GoogleLoginRequest(BaseModel):
-    id_token: str
+    id_token: Optional[str] = None
+    access_token: Optional[str] = None
 
 class UserInvite(BaseModel):
     email: EmailStr
