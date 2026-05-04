@@ -23,21 +23,28 @@ models.Base.metadata.create_all(bind=engine)
 # Ensure missing production columns are added safely.
 def ensure_database_schema():
     inspector = inspect(engine)
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if "transactions" in inspector.get_table_names():
             tx_columns = [col["name"] for col in inspector.get_columns("transactions")]
+            print(f"[startup] transactions columns: {tx_columns}")
             if "created_by" not in tx_columns:
+                print("[startup] adding transactions.created_by")
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_by UUID"))
 
         if "documents" in inspector.get_table_names():
             doc_columns = [col["name"] for col in inspector.get_columns("documents")]
+            print(f"[startup] documents columns: {doc_columns}")
             if "file_name" not in doc_columns:
+                print("[startup] adding documents.file_name")
                 conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(200)"))
             if "uploaded_at" not in doc_columns:
+                print("[startup] adding documents.uploaded_at")
                 conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP"))
             if "title" in doc_columns and "file_name" in doc_columns:
+                print("[startup] copying documents.title -> documents.file_name")
                 conn.execute(text("UPDATE documents SET file_name = title WHERE file_name IS NULL"))
             if "created_at" in doc_columns and "uploaded_at" in doc_columns:
+                print("[startup] copying documents.created_at -> documents.uploaded_at")
                 conn.execute(text("UPDATE documents SET uploaded_at = created_at WHERE uploaded_at IS NULL"))
 
 ensure_database_schema()
