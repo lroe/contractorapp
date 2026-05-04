@@ -1,0 +1,15 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+.env.example
+db.zip
+mobile_app/
+*.db
+*.sqlite
+.vscode/
+.idea/
+README.md
+cmd.txt

@@ -1,4 +1,5 @@
 services:
+  # ─── PostgreSQL Database ────────────────────────────────────────────────────
   db:
     image: postgres:15
     restart: always
@@ -10,6 +11,42 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── FastAPI Backend (API + WebSocket) ──────────────────────────────────────
+  api:
+    build: .
+    restart: always
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ─── Flask Web Portal ──────────────────────────────────────────────────────
+  web:
+    build: .
+    restart: always
+    command: gunicorn --bind 0.0.0.0:5050 --workers 2 --chdir /app web_portal.main:app
+    ports:
+      - "5050:5050"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  uploads_data:
