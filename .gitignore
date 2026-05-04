@@ -14,6 +14,8 @@ mobile_app/linux/flutter/ephemeral/
 mobile_app/windows/flutter/ephemeral/
 mobile_app/ios/Flutter/Generated.xcconfig
 mobile_app/ios/Flutter/flutter_export_environment.sh
+build/
+
 
 # IDEs
 .vscode/
