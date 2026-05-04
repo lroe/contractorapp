@@ -20,6 +20,9 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a-very-secure-secret-key-for-dev')
 
+# Allow OAuth over HTTP since the droplet doesn't have HTTPS configured yet
+os.environ['AUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 # ─── Google OAuth Setup ───────────────────────────────────────────────────────
 oauth = OAuth(app)
 google = oauth.register(
