@@ -29,13 +29,8 @@ google = oauth.register(
     name='google',
     client_id=os.getenv('GOOGLE_CLIENT_ID'),
     client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    access_token_params=None,
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-    authorize_params=None,
-    api_base_url='https://www.googleapis.com/oauth2/v1/',
-    client_kwargs={'scope': 'openid email profile'},
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration'
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
 )
 
 @app.route('/uploads/<path:filename>')
@@ -106,7 +101,9 @@ def login_google():
 def auth_google_callback():
     try:
         token = oauth.google.authorize_access_token()
-        userinfo = oauth.google.get('userinfo').json()
+        userinfo = token.get('userinfo')
+        if not userinfo:
+            raise Exception("No userinfo found in token.")
     except Exception as e:
         with open('scratch/google_error.log', 'a') as f:
             import traceback
