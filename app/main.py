@@ -30,6 +30,9 @@ def ensure_database_schema():
             if "created_by" not in tx_columns:
                 print("[startup] adding transactions.created_by")
                 conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_by UUID"))
+            if "created_at" not in tx_columns:
+                print("[startup] adding transactions.created_at")
+                conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP"))
 
         if "documents" in inspector.get_table_names():
             doc_columns = [col["name"] for col in inspector.get_columns("documents")]
