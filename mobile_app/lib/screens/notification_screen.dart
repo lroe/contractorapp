@@ -19,6 +19,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = true;
   List<dynamic> _activities = [];
+  int _currentPage = 1;
+  final int _pageSize = 10;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       );
       setState(() {
         _activities = data;
+        _currentPage = 1;
         _isLoading = false;
       });
     } catch (e) {
@@ -46,6 +49,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final totalPages = (_activities.length / _pageSize).ceil();
+    final paginatedActivities = _getPaginatedActivities();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -62,8 +68,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ? _buildEmptyState()
                   : ListView.builder(
                       padding: const EdgeInsets.all(20),
-                      itemCount: _activities.length,
-                      itemBuilder: (context, index) => _buildActivityTile(_activities[index]),
+                      itemCount: paginatedActivities.length + (totalPages > 1 ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index < paginatedActivities.length) {
+                          return _buildActivityTile(paginatedActivities[index]);
+                        }
+                        return _buildPaginationControls(totalPages);
+                      },
                     ),
             ),
     );
@@ -77,6 +88,36 @@ class _NotificationScreenState extends State<NotificationScreen> {
           const Icon(Icons.notifications_none_rounded, size: 64, color: Color(0xFFCBD5E1)),
           const SizedBox(height: 16),
           Text('No notifications yet', style: GoogleFonts.outfit(fontSize: 18, color: const Color(0xFF94A3B8))),
+        ],
+      ),
+    );
+  }
+
+  List<dynamic> _getPaginatedActivities() {
+    final start = (_currentPage - 1) * _pageSize;
+    final end = start + _pageSize;
+    return _activities.sublist(start, end > _activities.length ? _activities.length : end);
+  }
+
+  Widget _buildPaginationControls(int totalPages) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('Page $_currentPage of $totalPages', style: GoogleFonts.outfit(color: Colors.grey[600], fontSize: 13)),
+          Row(
+            children: [
+              IconButton(
+                onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              IconButton(
+                onPressed: _currentPage < totalPages ? () => setState(() => _currentPage++) : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
         ],
       ),
     );

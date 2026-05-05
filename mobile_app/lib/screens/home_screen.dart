@@ -570,8 +570,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text('No activity yet.', style: TextStyle(color: Color(0xFF94A3B8))),
               ));
             }
+            final previewActivities = activities.take(3).toList();
             return Column(
-              children: activities.map((activity) => _buildActivityTile(activity)).toList(),
+              children: previewActivities.map((activity) => _buildActivityTile(activity)).toList(),
             );
           },
         ),

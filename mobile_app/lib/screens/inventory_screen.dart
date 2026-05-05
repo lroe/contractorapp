@@ -418,18 +418,24 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                   Text(unit, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ]),
               ]),
-              if (!isOwner) ...[
-                const Divider(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton.icon(
-                    onPressed: () => _showLogUsageDialog(item, name, unit),
-                    icon: const Icon(Icons.remove_circle_outline, size: 18),
-                    label: const Text('Log Consumption', style: TextStyle(fontWeight: FontWeight.bold)),
-                    style: TextButton.styleFrom(foregroundColor: const Color(0xFF64748B), padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
+              const Divider(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: (double.tryParse(item['current_quantity'].toString()) ?? 0) > 0
+                      ? () => _showLogUsageDialog(item, name, unit)
+                      : null,
+                  icon: const Icon(Icons.remove_circle_outline, size: 18),
+                  label: const Text('Log Consumption', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: (double.tryParse(item['current_quantity'].toString()) ?? 0) > 0
+                        ? const Color(0xFF64748B)
+                        : Colors.grey,
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
                   ),
                 ),
-              ],
+              ),
             ],
           ),
         );
