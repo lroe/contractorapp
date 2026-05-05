@@ -194,12 +194,11 @@ def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_
         db_user = crud.get_user_by_email(db, email=email)
         
         if not db_user:
-            # First time user - create user without organization
-            # They can be invited to join organizations later
+            # First time user - create user record and automatically assign any pre-invited role/org
             db_user = models.User(
                 name=name,
                 email=email,
-                role="supervisor",  # Default role, can be changed when invited
+                role="supervisor",
                 auth_provider="google",
                 google_id=google_id
             )
@@ -212,6 +211,12 @@ def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_
                 db_user.google_id = google_id
                 db_user.auth_provider = "google"
                 db.commit()
+
+            # If user was invited before sign-up, preserve their existing role and org.
+            # If they were created without org and role, keep default supervisor.
+            if not db_user.role:
+                db_user.role = "supervisor"
+            db.commit()
 
         return {
             "id": db_user.id,

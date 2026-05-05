@@ -27,11 +27,13 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
   Future<void> _loadTeamMembers() async {
     try {
       final members = await _apiService.listUsers(organizationId: widget.user.organizationId!);
+      if (!mounted) return;
       setState(() {
         _teamMembers = members;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load team members: $e')),
@@ -69,7 +71,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: selectedRole,
+              initialValue: selectedRole,
               decoration: const InputDecoration(labelText: 'Role'),
               items: const [
                 DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
@@ -98,6 +100,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
 
   Future<void> _inviteUser(String name, String email, String role) async {
     if (name.isEmpty || email.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
@@ -107,17 +110,19 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
     setState(() => _isInviting = true);
     try {
       await _apiService.inviteUser(widget.user.organizationId!, email, name, role);
+      if (!mounted) return;
       Navigator.of(context).pop();
       _loadTeamMembers();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$name has been invited as $role')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to invite user: $e')),
       );
     } finally {
-      setState(() => _isInviting = false);
+      if (mounted) setState(() => _isInviting = false);
     }
   }
 
@@ -182,7 +187,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                                   subtitle: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(member.email ?? member.phone ?? 'No contact info'),
+                                      Text(member.email ?? member.phone),
                                       Text(
                                         member.role.replaceAll('_', ' ').toUpperCase(),
                                         style: TextStyle(

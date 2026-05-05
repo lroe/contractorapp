@@ -251,6 +251,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _logout() {
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
   Widget _buildHeader(User user) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -285,11 +289,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 16),
-        const CircleAvatar(
-          radius: 28,
-          backgroundColor: Color(0xFFE2E8F0),
-          child: Icon(Icons.person_outline, color: Color(0xFF1E293B)),
+        Row(
+          children: [
+            IconButton(
+              onPressed: _logout,
+              icon: const Icon(Icons.logout, color: Color(0xFF334155)),
+              tooltip: 'Logout',
+            ),
+            const CircleAvatar(
+              radius: 28,
+              backgroundColor: Color(0xFFE2E8F0),
+              child: Icon(Icons.person_outline, color: Color(0xFF1E293B)),
+            ),
+          ],
         ),
       ],
     );

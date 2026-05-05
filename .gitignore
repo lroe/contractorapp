@@ -16,7 +16,6 @@ htmlcov/
 
 # Flask / app
 uploads/
-scratch/
 *.db
 *.sqlite
 *.pid
@@ -43,3 +42,6 @@ mobile_app/ios/Pods/
 
 # macOS
 .DS_Store
+
+!scratch/
+!scratch/*.py
