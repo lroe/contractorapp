@@ -312,9 +312,7 @@ class ApiService {
   }
 
   Future<List<User>> listUsers({String? role, required String organizationId}) async {
-    final url = role != null 
-        ? '$baseUrl/users/?organization_id=$organizationId&role=$role' 
-        : '$baseUrl/users/?organization_id=$organizationId';
+    final url = '$baseUrl/organizations/$organizationId/users/';
     final response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       Iterable l = json.decode(response.body);
