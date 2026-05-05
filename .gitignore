@@ -1,8 +1,25 @@
 # Python
 venv/
-__pycache__/
-*.pyc
 .env
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Flask / app
+uploads/
+scratch/
+*.db
+*.sqlite
+*.pid
 
 # Flutter
 mobile_app/.dart_tool/
@@ -14,13 +31,15 @@ mobile_app/linux/flutter/ephemeral/
 mobile_app/windows/flutter/ephemeral/
 mobile_app/ios/Flutter/Generated.xcconfig
 mobile_app/ios/Flutter/flutter_export_environment.sh
-build/
-
+mobile_app/android/.gradle/
+mobile_app/android/app/build/
+mobile_app/android/local.properties
+mobile_app/ios/Pods/
 
 # IDEs
 .vscode/
 .idea/
+*.iml
 
-# Database
-*.db
-*.sqlite
+# macOS
+.DS_Store
