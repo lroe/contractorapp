@@ -38,6 +38,7 @@ def main():
     user_data = schemas.UserCreate(
         organization_id=org.id,
         name="Owner",
+        phone="1234567890",  # Add a phone number for login
         email="123@gmail.com",  # Using email as username
         password="pass123",
         role="owner",
