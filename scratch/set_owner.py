@@ -14,24 +14,35 @@ from app import models
 def set_user_as_owner(email: str, organization_id: str):
     """
     Set a user with the given email as the owner of the specified organization.
+    If the user doesn't exist, create a placeholder user record.
     """
     db = SessionLocal()
     try:
         # Find the user by email
         user = db.query(models.User).filter(models.User.email == email).first()
-        if not user:
-            print(f"❌ User with email '{email}' not found.")
-            return False
-
+        
         # Find the organization
         org = db.query(models.Organization).filter(models.Organization.id == organization_id).first()
         if not org:
             print(f"❌ Organization with ID '{organization_id}' not found.")
             return False
 
-        # Update user's organization and role
-        user.organization_id = organization_id
-        user.role = 'owner'
+        if user:
+            # User exists, update their organization and role
+            user.organization_id = organization_id
+            user.role = 'owner'
+            action = "updated existing user as owner"
+        else:
+            # User doesn't exist, create placeholder user
+            user = models.User(
+                organization_id=organization_id,
+                name="Invited User",
+                email=email,
+                role='owner',
+                auth_provider="google"  # Assume they will login with Google
+            )
+            db.add(user)
+            action = "created placeholder user as owner"
 
         db.commit()
         db.refresh(user)
@@ -41,6 +52,8 @@ def set_user_as_owner(email: str, organization_id: str):
         print(f"   Name: {user.name}")
         print(f"   Organization: {org.name} ({org.id})")
         print(f"   Role: {user.role}")
+        print(f"   Action: {action}")
+        print("   Note: If this was a new user, they will be activated when they sign up with Google.")
 
         return True
 
@@ -48,6 +61,8 @@ def set_user_as_owner(email: str, organization_id: str):
         db.rollback()
         print(f"❌ Error setting user as owner: {e}")
         return False
+    finally:
+        db.close()
     finally:
         db.close()
 
