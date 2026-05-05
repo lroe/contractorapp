@@ -161,12 +161,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 24,
                             height: 24,
                           ),
-                          label: const Text(
-                            'Continue with Google',
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          label: Flexible(
+                            child: Text(
+                              'Continue with Google',
+                              textAlign: TextAlign.center,
+                              softWrap: true,
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           style: OutlinedButton.styleFrom(

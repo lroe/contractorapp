@@ -291,11 +291,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         Row(
           children: [
-            IconButton(
+            TextButton.icon(
               onPressed: _logout,
               icon: const Icon(Icons.logout, color: Color(0xFF334155)),
-              tooltip: 'Logout',
+              label: const Text(
+                'Logout',
+                style: TextStyle(color: Color(0xFF334155)),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                backgroundColor: const Color(0xFFE2E8F0),
+              ),
             ),
+            const SizedBox(width: 8),
             const CircleAvatar(
               radius: 28,
               backgroundColor: Color(0xFFE2E8F0),
