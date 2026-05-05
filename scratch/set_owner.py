@@ -63,8 +63,6 @@ def set_user_as_owner(email: str, organization_id: str):
         return False
     finally:
         db.close()
-    finally:
-        db.close()
 
 def main():
     if len(sys.argv) != 3:
