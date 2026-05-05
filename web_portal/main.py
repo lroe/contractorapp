@@ -447,8 +447,10 @@ def add_project_site():
     )
     db.add(site)
     db.commit()
+    site_name = site.name
+    project_name = project.name
+    flash(f'Site "{site_name}" added under {project_name}.', 'success')
     close_db(db)
-    flash(f'Site "{site.name}" added under {project.name}.', 'success')
     return redirect(url_for('projects_page'))
 
 # ─── Vendor Prices ──────────────────────────────────────────────────
