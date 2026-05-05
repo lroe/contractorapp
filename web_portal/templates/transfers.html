@@ -23,8 +23,8 @@
     {% for t in transfers %}
     <tr>
       <td style="color:var(--muted);font-size:12px">{{ t.created_at.strftime('%Y-%m-%d') if t.created_at else '—' }}</td>
-      <td><strong>{{ t.from_project.name if t.from_project else '—' }}</strong></td>
-      <td><strong>{{ t.to_project.name if t.to_project else '—' }}</strong></td>
+      <td><strong>{{ t.from_site.name if t.from_site else (t.from_project.name if t.from_project else '—') }}</strong>{% if t.from_site and t.from_site.project %} <span class="muted">({{ t.from_site.project.name }})</span>{% endif %}</td>
+      <td><strong>{{ t.to_site.name if t.to_site else (t.to_project.name if t.to_project else '—') }}</strong>{% if t.to_site and t.to_site.project %} <span class="muted">({{ t.to_site.project.name }})</span>{% endif %}</td>
       <td>{{ t.material.name if t.material else '—' }}</td>
       <td>{{ t.quantity }} {{ t.material.unit if t.material else '' }}</td>
       <td><span class="badge badge-{{ t.status }}">{{ t.status }}</span></td>
@@ -57,16 +57,20 @@
       <div class="form-grid cols-2" style="margin-bottom:14px">
         <div class="form-group">
           <label>Source Site (From) *</label>
-          <select name="from_project_id" required>
+          <select name="from_site_id" required>
             <option value="">Select source…</option>
-            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+            {% for s in sites %}
+            <option value="{{ s.id }}">{{ s.name }} — {{ s.project.name }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label>Destination Site (To) *</label>
-          <select name="to_project_id" required>
+          <select name="to_site_id" required>
             <option value="">Select destination…</option>
-            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+            {% for s in sites %}
+            <option value="{{ s.id }}">{{ s.name }} — {{ s.project.name }}</option>
+            {% endfor %}
           </select>
         </div>
       </div>

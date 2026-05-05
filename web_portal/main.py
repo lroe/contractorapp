@@ -403,7 +403,11 @@ def projects_page():
     db = get_db()
     org_id = uuid.UUID(session['organization_id'])
     projs = db.query(models.Project).filter(models.Project.organization_id == org_id).order_by(models.Project.name).all()
-    rendered = render_template('projects.html', projects=projs)
+    sites = db.query(models.Site).join(models.Project).filter(models.Project.organization_id == org_id).order_by(models.Project.name, models.Site.name).all()
+    project_sites = {}
+    for site in sites:
+        project_sites.setdefault(str(site.project_id), []).append(site)
+    rendered = render_template('projects.html', projects=projs, project_sites=project_sites)
     close_db(db)
     return rendered
 
@@ -421,7 +425,30 @@ def add_project_web():
     db.commit()
     proj_name = proj.name
     close_db(db)
-    flash(f'Project/Site "{proj_name}" added.', 'success')
+    flash(f'Project "{proj_name}" added.', 'success')
+    return redirect(url_for('projects_page'))
+
+@app.route('/projects/sites/add', methods=['POST'])
+@login_required
+def add_project_site():
+    db = get_db()
+    org_id = uuid.UUID(session['organization_id'])
+    project_id = uuid.UUID(request.form['project_id'])
+    project = db.query(models.Project).filter(models.Project.id == project_id, models.Project.organization_id == org_id).first()
+    if not project:
+        close_db(db)
+        flash('Project not found or access denied.', 'error')
+        return redirect(url_for('projects_page'))
+
+    site = models.Site(
+        project_id=project_id,
+        name=request.form['name'],
+        code=request.form.get('code')
+    )
+    db.add(site)
+    db.commit()
+    close_db(db)
+    flash(f'Site "{site.name}" added under {project.name}.', 'success')
     return redirect(url_for('projects_page'))
 
 # ─── Vendor Prices ──────────────────────────────────────────────────
@@ -783,14 +810,21 @@ def transfers():
     db = get_db()
     org_id = uuid.UUID(session['organization_id'])
     projects = db.query(models.Project).filter(models.Project.organization_id == org_id, models.Project.status == 'active').all()
+    sites = db.query(models.Site).join(models.Project).filter(models.Project.organization_id == org_id).order_by(models.Project.name, models.Site.name).all()
     materials = db.query(models.Material).filter(models.Material.organization_id == org_id).order_by(models.Material.name).all()
     # Only show transfers where destination project belongs to this org
-    all_transfers = db.query(models.TransferNote).join(
+    all_transfers = db.query(models.TransferNote).options(
+        joinedload(models.TransferNote.from_site),
+        joinedload(models.TransferNote.to_site),
+        joinedload(models.TransferNote.material),
+        joinedload(models.TransferNote.from_project),
+        joinedload(models.TransferNote.to_project)
+    ).join(
         models.Project, models.TransferNote.to_project_id == models.Project.id
     ).filter(
         models.Project.organization_id == org_id
     ).order_by(models.TransferNote.created_at.desc()).all()
-    rendered = render_template('transfers.html', projects=projects, materials=materials, transfers=all_transfers)
+    rendered = render_template('transfers.html', projects=projects, sites=sites, materials=materials, transfers=all_transfers)
     close_db(db)
     return rendered
 
@@ -799,28 +833,36 @@ def transfers():
 def create_transfer():
     db = get_db()
     org_id = uuid.UUID(session['organization_id'])
-    from_id = uuid.UUID(request.form['from_project_id'])
-    to_id = uuid.UUID(request.form['to_project_id'])
+    from_site_id = uuid.UUID(request.form['from_site_id'])
+    to_site_id = uuid.UUID(request.form['to_site_id'])
     mat_id = uuid.UUID(request.form['material_id'])
     qty = float(request.form['quantity'])
     
-    # 1. Verify projects belong to org
-    from_proj = db.query(models.Project).filter(models.Project.id == from_id, models.Project.organization_id == org_id).first()
-    to_proj = db.query(models.Project).filter(models.Project.id == to_id, models.Project.organization_id == org_id).first()
+    from_site = db.query(models.Site).join(models.Project).filter(
+        models.Site.id == from_site_id,
+        models.Project.organization_id == org_id
+    ).first()
+    to_site = db.query(models.Site).join(models.Project).filter(
+        models.Site.id == to_site_id,
+        models.Project.organization_id == org_id
+    ).first()
     
-    if not from_proj or not to_proj:
+    if not from_site or not to_site:
         close_db(db)
-        flash('One or more projects not found.', 'error')
+        flash('One or more sites not found.', 'error')
         return redirect(url_for('transfers'))
 
-    if from_id == to_id:
+    if from_site_id == to_site_id:
         close_db(db)
-        flash('Source and destination cannot be the same.', 'error')
+        flash('Source and destination site cannot be the same.', 'error')
         return redirect(url_for('transfers'))
+
+    from_project_id = from_site.project_id
+    to_project_id = to_site.project_id
 
     # 2. CHECK STOCK: Verify source project has enough stock
     inv = db.query(models.ProjectInventory).filter(
-        models.ProjectInventory.project_id == from_id,
+        models.ProjectInventory.project_id == from_project_id,
         models.ProjectInventory.material_id == mat_id
     ).first()
     
@@ -828,13 +870,15 @@ def create_transfer():
     if current_qty < qty:
         mat = db.query(models.Material).filter(models.Material.id == mat_id).first()
         close_db(db)
-        flash(f'Insufficient stock! {from_proj.name} only has {current_qty} {mat.unit if mat else ""} available.', 'error')
+        flash(f'Insufficient stock! {from_site.name} only has {current_qty} {mat.unit if mat else ""} available.', 'error')
         return redirect(url_for('transfers'))
 
     # 3. Create transfer
     t = models.TransferNote(
-        from_project_id=from_id,
-        to_project_id=to_id,
+        from_project_id=from_project_id,
+        to_project_id=to_project_id,
+        from_site_id=from_site_id,
+        to_site_id=to_site_id,
         material_id=mat_id,
         quantity=qty,
         remarks=request.form.get('remarks'),
@@ -857,8 +901,9 @@ def receive_transfer(transfer_id):
         to_proj = db.query(models.Project).filter(models.Project.id == t.to_project_id, models.Project.organization_id == uuid.UUID(session['organization_id'])).first()
         if to_proj and t.status != 'received':
             t.status = 'received'
-            _log_stock(db, t.from_project_id, t.material_id, 'transfer_out', float(t.quantity))
-            _log_stock(db, t.to_project_id, t.material_id, 'transfer_in', float(t.quantity))
+            if t.from_project_id != t.to_project_id:
+                _log_stock(db, t.from_project_id, t.material_id, 'transfer_out', float(t.quantity))
+                _log_stock(db, t.to_project_id, t.material_id, 'transfer_in', float(t.quantity))
             db.commit()
             flash('Transfer confirmed and stock updated.', 'success')
     close_db(db)

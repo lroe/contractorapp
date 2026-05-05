@@ -77,6 +77,16 @@ def ensure_database_schema():
                 conn.execute(text("UPDATE documents SET created_at = uploaded_at WHERE created_at IS NULL"))
             conn.execute(text("UPDATE documents SET category = 'other' WHERE category IS NULL"))
 
+        if "transfer_notes" in inspector.get_table_names():
+            tn_columns = [col["name"] for col in inspector.get_columns("transfer_notes")]
+            print(f"[startup] transfer_notes columns: {tn_columns}")
+            if "from_site_id" not in tn_columns:
+                print("[startup] adding transfer_notes.from_site_id")
+                conn.execute(text("ALTER TABLE transfer_notes ADD COLUMN IF NOT EXISTS from_site_id UUID"))
+            if "to_site_id" not in tn_columns:
+                print("[startup] adding transfer_notes.to_site_id")
+                conn.execute(text("ALTER TABLE transfer_notes ADD COLUMN IF NOT EXISTS to_site_id UUID"))
+
 ensure_database_schema()
 
 app = FastAPI(title="Contractor DB API")

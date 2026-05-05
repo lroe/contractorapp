@@ -44,10 +44,19 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     organization = relationship("Organization")
+    sites = relationship("Site", backref="project", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint('organization_id', 'code', name='_org_project_code_uc'),
     )
+
+class Site(Base):
+    __tablename__ = "sites"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    name = Column(String(150), nullable=False)
+    code = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class ProjectUser(Base):
     __tablename__ = "project_users"
@@ -318,6 +327,8 @@ class TransferNote(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     from_project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
     to_project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
+    from_site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True, index=True)
+    to_site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True, index=True)
     material_id = Column(UUID(as_uuid=True), ForeignKey("materials.id"), index=True)
     quantity = Column(Numeric(12, 2), nullable=False)
     status = Column(String(20), default="pending")
@@ -328,6 +339,8 @@ class TransferNote(Base):
     material = relationship("Material")
     from_project = relationship("Project", foreign_keys=[from_project_id])
     to_project = relationship("Project", foreign_keys=[to_project_id])
+    from_site = relationship("Site", foreign_keys=[from_site_id])
+    to_site = relationship("Site", foreign_keys=[to_site_id])
 
 class BOQItem(Base):
     __tablename__ = "boq_items"
