@@ -328,6 +328,10 @@ async def create_dpr_entry(dpr: schemas.DPREntryCreate, db: Session = Depends(ge
 def get_project_dpr(project_id: uuid.UUID, db: Session = Depends(get_db)):
     return crud.get_dpr_entries(db, project_id)
 
+@app.get("/tasks/{task_id}/dpr/", response_model=List[schemas.DPREntry])
+def get_task_dpr(task_id: uuid.UUID, db: Session = Depends(get_db)):
+    return db.query(models.DPREntry).filter(models.DPREntry.linked_task_id == task_id).all()
+
 @app.post("/dpr/{dpr_id}/media/")
 async def upload_dpr_media(
     dpr_id: uuid.UUID,
