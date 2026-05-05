@@ -38,7 +38,7 @@ def main():
     user_data = schemas.UserCreate(
         organization_id=org.id,
         name="Owner",
-        email="123",  # Using email as username
+        email="123@gmail.com",  # Using email as username
         password="pass123",
         role="owner",
         auth_provider="local"
