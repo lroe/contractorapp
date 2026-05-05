@@ -46,9 +46,22 @@ def main():
     )
     user = crud.create_user(db, user_data)
     print(f"✅ Created owner user: {user.email} (ID: {user.id})")
+
+    # Create supervisor user
+    supervisor_data = schemas.UserCreate(
+        organization_id=org.id,
+        name="Supervisor",
+        phone="9999999999",  # Supervisor login phone
+        email="supervisor@gmail.com",
+        password="pass123",
+        role="supervisor",
+        auth_provider="local"
+    )
+    supervisor = crud.create_user(db, supervisor_data)
+    print(f"✅ Created supervisor user: {supervisor.email} (ID: {supervisor.id})")
     
     db.close()
-    print("✅ Database reset and owner user added successfully!")
+    print("✅ Database reset and owner plus supervisor users added successfully!")
 
 if __name__ == "__main__":
     main()

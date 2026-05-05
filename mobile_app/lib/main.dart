@@ -8,14 +8,14 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  
+
   // Register Adapters
   Hive.registerAdapter(UserAdapter());
   Hive.registerAdapter(ProjectAdapter());
   Hive.registerAdapter(GangAdapter());
   Hive.registerAdapter(WorkerAdapter());
   Hive.registerAdapter(AttendanceAdapter());
-  
+
   // Open Boxes
   await Hive.openBox<Project>('projects');
   await Hive.openBox<Gang>('gangs');

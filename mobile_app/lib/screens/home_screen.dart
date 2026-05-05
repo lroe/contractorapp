@@ -97,7 +97,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_currentUser!.organizationId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('Welcome', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          title: Text(
+            'Welcome',
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1E293B),
+            ),
+          ),
           backgroundColor: Colors.white,
           elevation: 0,
           iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
@@ -112,25 +118,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 Text(
                   'Welcome to Contractor DB!',
-                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'You haven\'t been added to any organization yet. Please ask your organization owner to invite you.',
-                  style: GoogleFonts.outfit(fontSize: 16, color: Colors.grey[600]),
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: () {
                     // Sign out and go back to login
-                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/login', (route) => false);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3B82F6),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text('Sign Out'),
                 ),
@@ -585,7 +603,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => TeamManagementScreen(user: _currentUser!),
+                    builder: (context) =>
+                        TeamManagementScreen(user: _currentUser!),
                   ),
                 ),
               ),

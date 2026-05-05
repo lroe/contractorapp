@@ -53,7 +53,12 @@ class Project extends HiveObject {
   @HiveField(3)
   final String status;
 
-  Project({required this.id, required this.name, this.code, required this.status});
+  Project({
+    required this.id,
+    required this.name,
+    this.code,
+    required this.status,
+  });
 
   factory Project.fromJson(Map<String, dynamic> json) {
     return Project(
@@ -98,7 +103,13 @@ class Worker extends HiveObject {
   @HiveField(4)
   final String? gangId;
 
-  Worker({required this.id, required this.name, this.phone, this.skillType, this.gangId});
+  Worker({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.skillType,
+    this.gangId,
+  });
 
   factory Worker.fromJson(Map<String, dynamic> json) {
     return Worker(
@@ -167,8 +178,8 @@ class ProjectDocument extends HiveObject {
       fileUrl: json['file_url'] ?? '',
       fileType: json['file_type'],
       uploadedBy: json['uploaded_by']?.toString() ?? '',
-      uploadedAt: json['uploaded_at'] != null 
-          ? DateTime.parse(json['uploaded_at']) 
+      uploadedAt: json['uploaded_at'] != null
+          ? DateTime.parse(json['uploaded_at'])
           : DateTime.now(),
     );
   }

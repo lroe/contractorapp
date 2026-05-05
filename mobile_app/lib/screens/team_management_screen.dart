@@ -26,7 +26,9 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
 
   Future<void> _loadTeamMembers() async {
     try {
-      final members = await _apiService.listUsers(organizationId: widget.user.organizationId!);
+      final members = await _apiService.listUsers(
+        organizationId: widget.user.organizationId!,
+      );
       if (!mounted) return;
       setState(() {
         _teamMembers = members;
@@ -49,7 +51,10 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Invite Team Member', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Invite Team Member',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -74,8 +79,14 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
               initialValue: selectedRole,
               decoration: const InputDecoration(labelText: 'Role'),
               items: const [
-                DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
-                DropdownMenuItem(value: 'material_manager', child: Text('Material Manager')),
+                DropdownMenuItem(
+                  value: 'supervisor',
+                  child: Text('Supervisor'),
+                ),
+                DropdownMenuItem(
+                  value: 'material_manager',
+                  child: Text('Material Manager'),
+                ),
                 DropdownMenuItem(value: 'owner', child: Text('Owner')),
               ],
               onChanged: (value) => selectedRole = value!,
@@ -88,9 +99,19 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: _isInviting ? null : () => _inviteUser(nameController.text, emailController.text, selectedRole),
+            onPressed: _isInviting
+                ? null
+                : () => _inviteUser(
+                    nameController.text,
+                    emailController.text,
+                    selectedRole,
+                  ),
             child: _isInviting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Invite'),
           ),
         ],
@@ -109,7 +130,12 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
 
     setState(() => _isInviting = true);
     try {
-      await _apiService.inviteUser(widget.user.organizationId!, email, name, role);
+      await _apiService.inviteUser(
+        widget.user.organizationId!,
+        email,
+        name,
+        role,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
       _loadTeamMembers();
@@ -118,9 +144,9 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to invite user: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to invite user: $e')));
     } finally {
       if (mounted) setState(() => _isInviting = false);
     }
@@ -130,7 +156,13 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Team Management', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        title: Text(
+          'Team Management',
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1E293B),
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
@@ -147,7 +179,10 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                     children: [
                       Text(
                         'Team Members (${_teamMembers.length})',
-                        style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       ElevatedButton.icon(
                         onPressed: _showInviteDialog,
@@ -166,7 +201,10 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                         ? Center(
                             child: Text(
                               'No team members yet',
-                              style: GoogleFonts.outfit(fontSize: 16, color: Colors.grey),
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
                             ),
                           )
                         : ListView.builder(
@@ -180,16 +218,27 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                                     backgroundColor: _getRoleColor(member.role),
                                     child: Text(
                                       member.name[0].toUpperCase(),
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                  title: Text(member.name, style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                                  title: Text(
+                                    member.name,
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(member.email ?? member.phone),
                                       Text(
-                                        member.role.replaceAll('_', ' ').toUpperCase(),
+                                        member.role
+                                            .replaceAll('_', ' ')
+                                            .toUpperCase(),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: _getRoleColor(member.role),
@@ -199,7 +248,9 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                                     ],
                                   ),
                                   trailing: Icon(
-                                    member.authProvider == 'google' ? Icons.account_circle : Icons.lock,
+                                    member.authProvider == 'google'
+                                        ? Icons.account_circle
+                                        : Icons.lock,
                                     color: Colors.grey,
                                   ),
                                 ),
