@@ -30,7 +30,7 @@ def main():
     db = SessionLocal()
     
     # Create organization
-    org_data = schemas.OrganizationCreate(name="Default Organization")
+    org_data = schemas.OrganizationCreate(name="Guidee Constructions")
     org = crud.create_organization(db, org_data)
     print(f"✅ Created organization: {org.name} (ID: {org.id})")
     
