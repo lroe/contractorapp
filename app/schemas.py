@@ -399,7 +399,9 @@ class WasteLog(WasteLogBase):
 
 class ProjectDocumentBase(BaseModel):
     project_id: UUID
-    file_name: str
+    title: Optional[str] = None
+    file_name: Optional[str] = None
+    category: Optional[str] = "other"
     file_url: str
 
 class ProjectDocumentCreate(ProjectDocumentBase):
@@ -408,6 +410,7 @@ class ProjectDocumentCreate(ProjectDocumentBase):
 class ProjectDocument(ProjectDocumentBase):
     id: UUID
     uploaded_by: UUID
+    created_at: datetime
     uploaded_at: datetime
 
     class Config:

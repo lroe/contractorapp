@@ -383,11 +383,17 @@ class Transaction(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    project = relationship("Project")
+    created_by_user = relationship("User", foreign_keys=[created_by])
+
 class ProjectDocument(Base):
     __tablename__ = "documents"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    file_name = Column(String(200), nullable=False)
+    title = Column(String(200), nullable=True)
+    category = Column(String(50), default="other", nullable=False)
+    file_name = Column(String(200), nullable=True)
     file_url = Column(Text, nullable=False)
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
     uploaded_at = Column(DateTime, default=datetime.utcnow)

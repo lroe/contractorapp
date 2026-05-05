@@ -377,7 +377,14 @@ def get_waste_logs(db: Session, project_id: uuid.UUID):
 
 # Documents
 def create_project_document(db: Session, document: schemas.ProjectDocumentCreate):
-    db_doc = models.ProjectDocument(**document.dict())
+    data = document.dict()
+    if not data.get('title') and data.get('file_name'):
+        data['title'] = data['file_name']
+    if not data.get('file_name') and data.get('title'):
+        data['file_name'] = data['title']
+    if not data.get('category'):
+        data['category'] = 'other'
+    db_doc = models.ProjectDocument(**data)
     db.add(db_doc)
     db.commit()
     db.refresh(db_doc)

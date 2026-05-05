@@ -37,18 +37,45 @@ def ensure_database_schema():
         if "documents" in inspector.get_table_names():
             doc_columns = [col["name"] for col in inspector.get_columns("documents")]
             print(f"[startup] documents columns: {doc_columns}")
+            if "title" not in doc_columns:
+                print("[startup] adding documents.title")
+                conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS title VARCHAR(200)"))
+            if "category" not in doc_columns:
+                print("[startup] adding documents.category")
+                conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS category VARCHAR(50)"))
             if "file_name" not in doc_columns:
                 print("[startup] adding documents.file_name")
                 conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(200)"))
+            if "created_at" not in doc_columns:
+                print("[startup] adding documents.created_at")
+                conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMP"))
             if "uploaded_at" not in doc_columns:
                 print("[startup] adding documents.uploaded_at")
                 conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP"))
             if "title" in doc_columns and "file_name" in doc_columns:
                 print("[startup] copying documents.title -> documents.file_name")
                 conn.execute(text("UPDATE documents SET file_name = title WHERE file_name IS NULL"))
+                print("[startup] copying documents.file_name -> documents.title")
+                conn.execute(text("UPDATE documents SET title = file_name WHERE title IS NULL"))
+            elif "title" in doc_columns and "file_name" not in doc_columns:
+                print("[startup] copying documents.title -> documents.file_name")
+                conn.execute(text("UPDATE documents SET file_name = title WHERE file_name IS NULL"))
+            elif "file_name" in doc_columns and "title" not in doc_columns:
+                print("[startup] copying documents.file_name -> documents.title")
+                conn.execute(text("UPDATE documents SET title = file_name WHERE title IS NULL"))
+
             if "created_at" in doc_columns and "uploaded_at" in doc_columns:
                 print("[startup] copying documents.created_at -> documents.uploaded_at")
                 conn.execute(text("UPDATE documents SET uploaded_at = created_at WHERE uploaded_at IS NULL"))
+                print("[startup] copying documents.uploaded_at -> documents.created_at")
+                conn.execute(text("UPDATE documents SET created_at = uploaded_at WHERE created_at IS NULL"))
+            elif "created_at" in doc_columns and "uploaded_at" not in doc_columns:
+                print("[startup] copying documents.created_at -> documents.uploaded_at")
+                conn.execute(text("UPDATE documents SET uploaded_at = created_at WHERE uploaded_at IS NULL"))
+            elif "uploaded_at" in doc_columns and "created_at" not in doc_columns:
+                print("[startup] copying documents.uploaded_at -> documents.created_at")
+                conn.execute(text("UPDATE documents SET created_at = uploaded_at WHERE created_at IS NULL"))
+            conn.execute(text("UPDATE documents SET category = 'other' WHERE category IS NULL"))
 
 ensure_database_schema()
 
@@ -665,7 +692,12 @@ async def upload_project_documents(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         db_doc = crud.create_project_document(db, schemas.ProjectDocumentCreate(
-            project_id=project_id, file_name=file.filename, file_url=f"/uploads/projects/{project_id}/documents/{safe_name}", uploaded_by=uploaded_by
+            project_id=project_id,
+            title=file.filename,
+            category="other",
+            file_name=file.filename,
+            file_url=f"/uploads/projects/{project_id}/documents/{safe_name}",
+            uploaded_by=uploaded_by
         ))
         docs.append(db_doc)
     await manager.broadcast({"type": "NEW_DOCUMENT", "project_id": str(project_id)})

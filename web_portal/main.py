@@ -1068,10 +1068,11 @@ def documents():
             file_path = os.path.join(upload_dir, file.filename)
             file.save(file_path)
             
-            new_doc = models.Document(
+            new_doc = models.ProjectDocument(
                 project_id=uuid.UUID(proj_id_form),
-                title=title,
-                category=category,
+                title=title or file.filename,
+                category=category or 'other',
+                file_name=file.filename,
                 file_url=f"/{file_path}",
                 uploaded_by=uuid.UUID(user_id)
             )
@@ -1082,10 +1083,83 @@ def documents():
 
     docs = []
     if project_id:
-        docs = db.query(models.Document).filter(models.Document.project_id == uuid.UUID(project_id)).all()
+        docs = db.query(models.ProjectDocument).filter(models.ProjectDocument.project_id == uuid.UUID(project_id)).all()
         
     close_db(db)
     return render_template('documents.html', projects=projects, selected_project_id=project_id, documents=docs)
+
+@app.route('/finance', methods=['GET', 'POST'])
+@login_required
+def finance():
+    db = get_db()
+    org_id = uuid.UUID(session['organization_id'])
+    user_id = session['user_id']
+    user_role = session['user_role']
+
+    projects = get_authorized_projects(db, org_id, user_id, user_role)
+    selected_project_id = request.args.get('project_id')
+    selected_type = request.args.get('type')
+
+    if request.method == 'POST':
+        proj_id_form = request.form.get('project_id')
+        tx_type = request.form.get('type')
+        category = request.form.get('category')
+        amount = request.form.get('amount')
+        description = request.form.get('description')
+        transaction_date = request.form.get('transaction_date')
+
+        if proj_id_form and tx_type and amount:
+            tx_date = None
+            if transaction_date:
+                try:
+                    tx_date = datetime.strptime(transaction_date, '%Y-%m-%d').date()
+                except ValueError:
+                    tx_date = date.today()
+            else:
+                tx_date = date.today()
+
+            tx = models.Transaction(
+                project_id=uuid.UUID(proj_id_form),
+                type=tx_type,
+                category=category or 'other',
+                amount=float(amount),
+                description=description,
+                transaction_date=tx_date,
+                created_by=uuid.UUID(user_id)
+            )
+            db.add(tx)
+            db.commit()
+            flash('Transaction recorded.', 'success')
+            return redirect(url_for('finance', project_id=proj_id_form))
+
+        flash('Please select a project, type, and amount.', 'error')
+
+    query = db.query(models.Transaction).join(models.Project).filter(
+        models.Transaction.project_id == models.Project.id,
+        models.Project.organization_id == org_id
+    )
+    if selected_project_id:
+        query = query.filter(models.Transaction.project_id == uuid.UUID(selected_project_id))
+    if selected_type:
+        query = query.filter(models.Transaction.type == selected_type)
+
+    transactions = query.order_by(models.Transaction.transaction_date.desc(), models.Transaction.created_at.desc()).all()
+    totals = {'expense': 0.0, 'income': 0.0}
+    for tx in transactions:
+        if tx.type == 'expense':
+            totals['expense'] += float(tx.amount or 0)
+        elif tx.type == 'income':
+            totals['income'] += float(tx.amount or 0)
+
+    close_db(db)
+    return render_template(
+        'finance.html',
+        projects=projects,
+        selected_project_id=selected_project_id,
+        transactions=transactions,
+        totals=totals,
+        selected_type=selected_type
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, port=5050)
