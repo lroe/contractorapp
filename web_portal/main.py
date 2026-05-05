@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 from app import models
 import bcrypt
@@ -1134,7 +1135,7 @@ def finance():
 
         flash('Please select a project, type, and amount.', 'error')
 
-    query = db.query(models.Transaction).join(models.Project).filter(
+    query = db.query(models.Transaction).options(joinedload(models.Transaction.project)).join(models.Project).filter(
         models.Transaction.project_id == models.Project.id,
         models.Project.organization_id == org_id
     )
