@@ -194,16 +194,12 @@ def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_
         db_user = crud.get_user_by_email(db, email=email)
         
         if not db_user:
-            # First time user (not invited) -> create organization & user
-            new_org = models.Organization(name=f"{name}'s Organization")
-            db.add(new_org)
-            db.flush() # Get new_org.id
-            
+            # First time user - create user without organization
+            # They can be invited to join organizations later
             db_user = models.User(
-                organization_id=new_org.id,
                 name=name,
                 email=email,
-                role="owner",
+                role="supervisor",  # Default role, can be changed when invited
                 auth_provider="google",
                 google_id=google_id
             )
@@ -236,16 +232,36 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Phone already registered")
     return crud.create_user(db=db, user=user)
 
-@app.get("/users/", response_model=List[schemas.User])
-def list_users(organization_id: uuid.UUID, role: Optional[str] = None, db: Session = Depends(get_db)):
-    return crud.get_users(db, organization_id, role)
+@app.get("/organizations/{organization_id}/users/", response_model=List[schemas.User])
+def get_organization_users(organization_id: uuid.UUID, db: Session = Depends(get_db)):
+    return crud.get_users(db, organization_id)
+
+@app.post("/organizations/{organization_id}/users/invite/", response_model=schemas.User)
+def invite_organization_user(organization_id: uuid.UUID, invite: schemas.UserInvite, db: Session = Depends(get_db)):
+    # Ensure the invite is for the correct organization
+    if invite.organization_id != organization_id:
+        raise HTTPException(status_code=400, detail="Organization ID mismatch")
+    return invite_user(invite, db)
 
 @app.post("/users/invite/", response_model=schemas.User)
 def invite_user(invite: schemas.UserInvite, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=invite.email)
     if db_user:
-        raise HTTPException(status_code=400, detail="User already exists with this email")
+        if db_user.organization_id == invite.organization_id:
+            raise HTTPException(status_code=400, detail="User is already a member of this organization")
+        elif db_user.organization_id:
+            raise HTTPException(status_code=400, detail="User is already a member of another organization")
+        else:
+            # User exists but not in any organization, add them to this one
+            db_user.organization_id = invite.organization_id
+            db_user.role = invite.role
+            if invite.name and invite.name != "Invited User":
+                db_user.name = invite.name
+            db.commit()
+            db.refresh(db_user)
+            return db_user
     
+    # Create new user
     new_user = models.User(
         organization_id=invite.organization_id,
         name=invite.name,

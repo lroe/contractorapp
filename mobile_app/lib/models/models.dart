@@ -16,6 +16,8 @@ class User extends HiveObject {
   final String role;
   @HiveField(5)
   final String? organizationId;
+  @HiveField(6)
+  final String authProvider;
 
   User({
     required this.id,
@@ -24,6 +26,7 @@ class User extends HiveObject {
     this.email,
     required this.role,
     this.organizationId,
+    this.authProvider = 'local',
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -34,6 +37,7 @@ class User extends HiveObject {
       email: json['email'],
       role: json['role'] ?? 'supervisor',
       organizationId: json['organization_id'],
+      authProvider: json['auth_provider'] ?? 'local',
     );
   }
 }

@@ -26,6 +26,7 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     role: str
+    auth_provider: str = "local"
 
 class UserCreate(UserBase):
     password: Optional[str] = None

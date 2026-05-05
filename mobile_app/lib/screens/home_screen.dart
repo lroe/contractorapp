@@ -10,6 +10,7 @@ import 'finance_screen.dart';
 import 'attendance_report_screen.dart';
 import 'documents_screen.dart';
 import 'notification_screen.dart';
+import 'team_management_screen.dart';
 import '../models/models.dart';
 
 import '../services/api_service.dart';
@@ -91,6 +92,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     if (_currentUser == null)
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    // Check if user has an organization
+    if (_currentUser!.organizationId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Welcome', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.group_add, size: 80, color: Colors.grey),
+                const SizedBox(height: 24),
+                Text(
+                  'Welcome to Contractor DB!',
+                  style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'You haven\'t been added to any organization yet. Please ask your organization owner to invite you.',
+                  style: GoogleFonts.outfit(fontSize: 16, color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () {
+                    // Sign out and go back to login
+                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: const Text('Sign Out'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     final bool isOwner = _currentUser!.role == 'owner';
 
@@ -512,6 +561,18 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ),
+              _buildActionCard(
+                context,
+                'Team',
+                Icons.group,
+                const Color(0xFF059669),
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TeamManagementScreen(user: _currentUser!),
                   ),
                 ),
               ),

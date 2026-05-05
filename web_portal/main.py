@@ -183,7 +183,18 @@ def team():
         if email:
             existing = db.query(models.User).filter(models.User.email == email).first()
             if existing:
-                flash(f'User with email {email} already exists.', 'error')
+                if existing.organization_id == org_id:
+                    flash(f'{email} is already a member of your organization.', 'warning')
+                elif existing.organization_id:
+                    flash(f'{email} is already a member of another organization.', 'error')
+                else:
+                    # Add existing user to organization
+                    existing.organization_id = org_id
+                    existing.role = role
+                    if name != "Invited User":
+                        existing.name = name
+                    db.commit()
+                    flash(f'{name} ({email}) has been added to your team as {role}.', 'success')
             else:
                 new_user = models.User(
                     organization_id=org_id,

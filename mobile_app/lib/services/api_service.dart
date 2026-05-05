@@ -323,6 +323,24 @@ class ApiService {
     throw Exception('Failed to load users');
   }
 
+  Future<User> inviteUser(String organizationId, String email, String name, String role) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/organizations/$organizationId/users/invite/'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': email,
+        'name': name,
+        'role': role,
+        'organization_id': organizationId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return User.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to invite user: ${response.body}');
+    }
+  }
+
   Future<void> assignSupervisor(String projectId, String userId) async {
     final response = await http.post(
       Uri.parse('$baseUrl/projects/$projectId/assign/?user_id=$userId'),
