@@ -210,7 +210,10 @@ def google_login(request: schemas.GoogleLoginRequest, db: Session = Depends(get_
             if not db_user.google_id:
                 db_user.google_id = google_id
                 db_user.auth_provider = "google"
-                db.commit()
+
+            # If the invited placeholder name was generic, replace it with the Google profile name.
+            if not db_user.name or db_user.name.strip().lower() == "invited user":
+                db_user.name = name
 
             # If user was invited before sign-up, preserve their existing role and org.
             # If they were created without org and role, keep default supervisor.

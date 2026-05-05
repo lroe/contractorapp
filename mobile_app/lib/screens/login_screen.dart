@@ -14,6 +14,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _apiService = ApiService();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
   bool _isLoading = false;
 
   Future<void> _handleLogin() async {
@@ -46,13 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-        serverClientId:
-            '716708862792-o5ctv053av0fuu0i3n463lsg604t3e3i.apps.googleusercontent.com',
-      );
-      print('GoogleSignIn init. serverClientId set');
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      await _googleSignIn.signOut();
+      print('GoogleSignIn signed out to reset account chooser');
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
       print('GoogleSignIn account: $account');
       if (account != null) {
         final GoogleSignInAuthentication auth = await account.authentication;
@@ -154,29 +153,32 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: _handleGoogleLogin,
-                          icon: Image.network(
-                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/24px-Google_%22G%22_logo.svg.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                          label: Flexible(
-                            child: Text(
-                              'Continue with Google',
-                              textAlign: TextAlign.center,
-                              softWrap: true,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _handleGoogleLogin,
+                            icon: const Icon(
+                              Icons.g_mobiledata,
+                              size: 24,
+                              color: Colors.black87,
+                            ),
+                            label: const Flexible(
+                              child: Text(
+                                'Continue with Google',
+                                textAlign: TextAlign.center,
+                                softWrap: true,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
