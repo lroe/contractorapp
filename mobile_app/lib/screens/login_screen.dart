@@ -56,7 +56,9 @@ class _LoginScreenState extends State<LoginScreen> {
       print('GoogleSignIn account: $account');
       if (account != null) {
         final GoogleSignInAuthentication auth = await account.authentication;
-        print('GoogleSignIn auth: idToken=${auth.idToken != null}, accessToken=${auth.accessToken != null}');
+        print(
+          'GoogleSignIn auth: idToken=${auth.idToken != null}, accessToken=${auth.accessToken != null}',
+        );
         if (auth.idToken != null || auth.accessToken != null) {
           final user = await _apiService.googleLogin(
             idToken: auth.idToken,

@@ -1189,14 +1189,15 @@ def finance():
     if selected_project_id:
         query = query.filter(models.Transaction.project_id == uuid.UUID(selected_project_id))
     if selected_type:
-        query = query.filter(models.Transaction.type == selected_type)
+        query = query.filter(func.lower(models.Transaction.type) == selected_type.lower())
 
     transactions = query.order_by(models.Transaction.transaction_date.desc(), models.Transaction.created_at.desc()).all()
     totals = {'expense': 0.0, 'income': 0.0}
     for tx in transactions:
-        if tx.type == 'expense':
+        tx_type = (tx.type or '').strip().lower()
+        if tx_type == 'expense':
             totals['expense'] += float(tx.amount or 0)
-        elif tx.type == 'income':
+        elif tx_type == 'income':
             totals['income'] += float(tx.amount or 0)
 
     close_db(db)

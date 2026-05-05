@@ -9,7 +9,11 @@ import 'inventory_screen.dart';
 class NotificationScreen extends StatefulWidget {
   final User user;
   final Project? selectedProject;
-  const NotificationScreen({super.key, required this.user, this.selectedProject});
+  const NotificationScreen({
+    super.key,
+    required this.user,
+    this.selectedProject,
+  });
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
@@ -57,7 +61,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text('Activity Feed', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        title: Text(
+          'Activity Feed',
+          style: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1E293B),
+          ),
+        ),
         centerTitle: true,
       ),
       body: _isLoading
@@ -68,7 +78,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   ? _buildEmptyState()
                   : ListView.builder(
                       padding: const EdgeInsets.all(20),
-                      itemCount: paginatedActivities.length + (totalPages > 1 ? 1 : 0),
+                      itemCount:
+                          paginatedActivities.length + (totalPages > 1 ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index < paginatedActivities.length) {
                           return _buildActivityTile(paginatedActivities[index]);
@@ -85,9 +96,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.notifications_none_rounded, size: 64, color: Color(0xFFCBD5E1)),
+          const Icon(
+            Icons.notifications_none_rounded,
+            size: 64,
+            color: Color(0xFFCBD5E1),
+          ),
           const SizedBox(height: 16),
-          Text('No notifications yet', style: GoogleFonts.outfit(fontSize: 18, color: const Color(0xFF94A3B8))),
+          Text(
+            'No notifications yet',
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              color: const Color(0xFF94A3B8),
+            ),
+          ),
         ],
       ),
     );
@@ -96,7 +117,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
   List<dynamic> _getPaginatedActivities() {
     final start = (_currentPage - 1) * _pageSize;
     final end = start + _pageSize;
-    return _activities.sublist(start, end > _activities.length ? _activities.length : end);
+    return _activities.sublist(
+      start,
+      end > _activities.length ? _activities.length : end,
+    );
   }
 
   Widget _buildPaginationControls(int totalPages) {
@@ -105,15 +129,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('Page $_currentPage of $totalPages', style: GoogleFonts.outfit(color: Colors.grey[600], fontSize: 13)),
+          Text(
+            'Page $_currentPage of $totalPages',
+            style: GoogleFonts.outfit(color: Colors.grey[600], fontSize: 13),
+          ),
           Row(
             children: [
               IconButton(
-                onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+                onPressed: _currentPage > 1
+                    ? () => setState(() => _currentPage--)
+                    : null,
                 icon: const Icon(Icons.chevron_left),
               ),
               IconButton(
-                onPressed: _currentPage < totalPages ? () => setState(() => _currentPage++) : null,
+                onPressed: _currentPage < totalPages
+                    ? () => setState(() => _currentPage++)
+                    : null,
                 icon: const Icon(Icons.chevron_right),
               ),
             ],
@@ -126,12 +157,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget _buildActivityTile(dynamic activity) {
     final type = activity['type'];
     final data = activity['data'];
-    
-    switch(type) {
-      case 'dpr': return _buildDPRTile(data);
-      case 'material_request': return _buildMaterialRequestTile(data);
-      case 'attendance': return _buildAttendanceTile(data);
-      default: return const SizedBox();
+
+    switch (type) {
+      case 'dpr':
+        return _buildDPRTile(data);
+      case 'material_request':
+        return _buildMaterialRequestTile(data);
+      case 'attendance':
+        return _buildAttendanceTile(data);
+      default:
+        return const SizedBox();
     }
   }
 
@@ -142,7 +177,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ReportDetailScreen(report: Map<String, dynamic>.from(report))),
+        MaterialPageRoute(
+          builder: (context) =>
+              ReportDetailScreen(report: Map<String, dynamic>.from(report)),
+        ),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -157,20 +195,40 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       child: Image.network(
                         '$baseUrl${media[0]['media_url']}',
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) => const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
+                        errorBuilder: (context, error, stack) => const Icon(
+                          Icons.description_outlined,
+                          color: Color(0xFF3B82F6),
+                        ),
                       ),
                     )
-                  : const Icon(Icons.description_outlined, color: Color(0xFF3B82F6)),
+                  : const Icon(
+                      Icons.description_outlined,
+                      color: Color(0xFF3B82F6),
+                    ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('New Site Report', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(report['remarks'] ?? 'No remarks provided.', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                  Text(
+                    'New Site Report',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    report['remarks'] ?? 'No remarks provided.',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
                   const SizedBox(height: 4),
-                  Text('📅 ${report['entry_date']}', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+                  Text(
+                    '📅 ${report['entry_date']}',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                  ),
                 ],
               ),
             ),
@@ -182,15 +240,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   Widget _buildMaterialRequestTile(dynamic req) {
     final status = req['status'];
-    Color statusColor = status == 'pending' ? Colors.orange : (status == 'approved' ? Colors.blue : Colors.green);
-    
+    Color statusColor = status == 'pending'
+        ? Colors.orange
+        : (status == 'approved' ? Colors.blue : Colors.green);
+
     return GestureDetector(
       onTap: () {
         final projectId = req['project_id'];
-        final project = Project(id: projectId, name: req['project_name'], status: 'active');
+        final project = Project(
+          id: projectId,
+          name: req['project_name'],
+          status: 'active',
+        );
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => InventoryScreen(project: project, user: widget.user)),
+          MaterialPageRoute(
+            builder: (context) =>
+                InventoryScreen(project: project, user: widget.user),
+          ),
         );
       },
       child: Container(
@@ -205,13 +272,35 @@ class _NotificationScreenState extends State<NotificationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${req['material_name']} Requested', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text('${req['quantity']} ${req['unit']} for ${req['project_name']}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                  Text(
+                    '${req['material_name']} Requested',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  Text(
+                    '${req['quantity']} ${req['unit']} for ${req['project_name']}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                    child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -229,16 +318,30 @@ class _NotificationScreenState extends State<NotificationScreen> {
       decoration: _tileDecoration(),
       child: Row(
         children: [
-          _tileIcon(const Icon(Icons.person_pin_outlined, color: Color(0xFF10B981))),
+          _tileIcon(
+            const Icon(Icons.person_pin_outlined, color: Color(0xFF10B981)),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Attendance Marked', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('${att['worker_name']} was ${att['status']} at ${att['project_name']}', style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                Text(
+                  'Attendance Marked',
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  '${att['worker_name']} was ${att['status']} at ${att['project_name']}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
                 const SizedBox(height: 4),
-                Text('📅 ${att['entry_date']}', style: TextStyle(color: Colors.grey[400], fontSize: 11)),
+                Text(
+                  '📅 ${att['entry_date']}',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -252,7 +355,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
       color: Colors.white,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: const Color(0xFFF1F5F9)),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
     );
   }
 
@@ -260,7 +369,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Container(
       width: 48,
       height: 48,
-      decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Center(child: child),
     );
   }
