@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+// ignore_for_file: avoid_print, use_rethrow_when_possible
+
 import '../services/api_service.dart';
 import '../services/sync_queue_manager.dart';
 import '../services/network_connectivity.dart';
 import '../services/offline_dpr_manager.dart';
+import '../services/offline_attendance_manager.dart';
 import 'dart:async';
 
 /// Handles automatic syncing of offline operations when network is available
@@ -133,7 +135,7 @@ class BackgroundSyncService {
 
     try {
       // Submit attendance to server
-      final response = await _apiService.submitAttendance(attendanceData);
+      await _apiService.submitAttendance(attendanceData);
 
       // Mark as synced locally
       await OfflineAttendanceManager.markAttendanceSynced(operation.id);
@@ -151,10 +153,9 @@ class BackgroundSyncService {
 
   /// Sync project update operation
   Future<void> _syncProjectUpdateOperation(SyncOperation operation) async {
-    final projectData = operation.data;
     print('[BackgroundSync] Syncing project update: ${operation.id}');
 
-    // TODO: Implement project update sync with your API
+    // TODO: Implement project update sync with your API using operation.data
     // For now, just remove from queue
     await SyncQueueManager.removeOperation(operation.id);
   }
