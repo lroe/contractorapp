@@ -7,12 +7,9 @@ import 'tasks_screen.dart';
 import 'report_detail_screen.dart';
 import 'inventory_screen.dart';
 import 'finance_screen.dart';
-import 'attendance_report_screen.dart';
-import 'documents_screen.dart';
 import 'notification_screen.dart';
 import 'team_management_screen.dart';
 import '../models/models.dart';
-
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import '../config.dart';
@@ -27,9 +24,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
   User? _currentUser;
-  List<Project> _assignedProjects = [];
-  Project? _selectedProject;
-  bool _isLoadingProjects = false;
+  List<Project> _projects = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -63,28 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didChangeDependencies();
     if (_currentUser == null) {
       _currentUser = ModalRoute.of(context)!.settings.arguments as User?;
-      if (_currentUser != null && _currentUser!.role == 'supervisor') {
-        _loadAssignedProjects();
-      }
-    }
-  }
-
-  Future<void> _loadAssignedProjects() async {
-    setState(() => _isLoadingProjects = true);
-    try {
-      final projects = await _apiService.getProjects(
-        _currentUser!.organizationId!,
-        userId: _currentUser!.id,
-      );
-      setState(() {
-        _assignedProjects = projects;
-        if (_assignedProjects.isNotEmpty) {
-          _selectedProject = _assignedProjects.first;
-        }
-        _isLoadingProjects = false;
-      });
-    } catch (e) {
-      setState(() => _isLoadingProjects = false);
     }
   }
 
@@ -171,8 +145,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeader(_currentUser!),
               const SizedBox(height: 24),
-              if (!isOwner) _buildProjectSelector(),
-              const SizedBox(height: 24),
               _buildStatsRow(isOwner),
               const SizedBox(height: 32),
               _buildRecentActivity(),
@@ -186,10 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              if (!isOwner && _assignedProjects.isEmpty && !_isLoadingProjects)
-                _buildNoAssignmentWarning()
-              else
-                _buildActionGrid(context, isOwner),
+              _buildActionGrid(context, isOwner),
               const SizedBox(height: 32),
             ],
           ),
@@ -198,76 +167,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProjectSelector() {
-    if (_isLoadingProjects) return const LinearProgressIndicator();
-    if (_assignedProjects.isEmpty) return const SizedBox();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<Project>(
-          value: _selectedProject,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down),
-          items: _assignedProjects.map((Project p) {
-            return DropdownMenuItem<Project>(
-              value: p,
-              child: Text(
-                'Active Project: ${p.name}',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-              ),
-            );
-          }).toList(),
-          onChanged: (Project? newValue) {
-            setState(() {
-              _selectedProject = newValue;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNoAssignmentWarning() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.orange,
-            size: 48,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'You aren\'t assigned any projects',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.orange[900],
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Please contact the owner to get access to project tasks.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.orange),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _logout() {
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -292,11 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                user.role == 'owner'
-                    ? 'Business Owner'
-                    : (_selectedProject != null
-                          ? 'Project: ${_selectedProject!.name}'
-                          : 'No Project Assigned'),
+                user.role == 'owner' ? 'Business Owner' : 'Team Member',
                 style: GoogleFonts.outfit(
                   fontSize: 16,
                   color: const Color(0xFF64748B),
@@ -331,13 +226,8 @@ class _HomeScreenState extends State<HomeScreen> {
       future: _apiService.getDashboardStats(
         _currentUser!.organizationId!,
         _currentUser!.id,
-        projectId: _selectedProject?.id,
       ),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting &&
-            !_isLoadingProjects) {
-          // Show placeholders or keep old values
-        }
 
         final stats =
             snapshot.data ??
@@ -411,360 +301,174 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisCount: 2,
       mainAxisSpacing: 16,
       crossAxisSpacing: 16,
-      children: isOwner
-          ? [
-              _buildActionCard(
-                context,
-                'Create Project',
-                Icons.add_business,
-                const Color(0xFF1E293B),
-                () => Navigator.push(
+      children: [
+        if (isOwner)
+          _buildActionCard(
+            context,
+            'Create Project',
+            Icons.add_business,
+            const Color(0xFF1E293B),
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    ProjectManagementScreen(user: _currentUser!),
+              ),
+            ),
+          ),
+        _buildActionCard(
+          context,
+          'Team',
+          Icons.groups,
+          const Color(0xFF3B82F6),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TeamManagementScreen(
+                user: _currentUser!,
+              ),
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'DPR Entry',
+          Icons.edit_document,
+          const Color(0xFF1E293B),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        ProjectManagementScreen(user: _currentUser!),
+                        DPRScreen(project: project, user: _currentUser!),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'Supervisors',
-                Icons.person_search,
-                const Color(0xFF3B82F6),
-                () => Navigator.push(
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'View Reports',
+          Icons.assessment,
+          const Color(0xFF10B981),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        ProjectManagementScreen(user: _currentUser!),
+                        ReportsListScreen(project: project),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'DPR Entry',
-                Icons.edit_document,
-                const Color(0xFF1E293B),
-                () => Navigator.push(
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'Tasks',
+          Icons.task_alt,
+          const Color(0xFFF59E0B),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
+                    builder: (context) => TasksScreen(
+                      project: project,
                       user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              DPRScreen(project: project, user: _currentUser!),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'View Reports',
-                Icons.assessment,
-                const Color(0xFF10B981),
-                () => Navigator.push(
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'Finance',
+          Icons.account_balance_wallet_outlined,
+          const Color(0xFF6366F1),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
+                    builder: (context) => FinanceScreen(
+                      project: project,
                       user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ReportsListScreen(project: project),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'Tasks',
-                Icons.task_alt,
-                const Color(0xFFF59E0B),
-                () => Navigator.push(
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'Attendance',
+          Icons.people_alt,
+          const Color(0xFF059669),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
+                    builder: (context) => AttendanceScreen(
+                      project: project,
                       user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TasksScreen(
-                            project: project,
-                            user: _currentUser!,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'Procure/Stock',
-                Icons.inventory_2_outlined,
-                const Color(0xFFEC4899),
-                () => Navigator.push(
+            ),
+          ),
+        ),
+        _buildActionCard(
+          context,
+          'Inventory',
+          Icons.inventory_2_outlined,
+          const Color(0xFFEC4899),
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementScreen(
+                user: _currentUser!,
+                onProjectTap: (project) => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
+                    builder: (context) => InventoryScreen(
+                      project: project,
                       user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => InventoryScreen(
-                            project: project,
-                            user: _currentUser!,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ),
               ),
-              _buildActionCard(
-                context,
-                'Finance',
-                Icons.account_balance_wallet_outlined,
-                const Color(0xFF6366F1),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
-                      user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FinanceScreen(
-                            project: project,
-                            user: _currentUser!,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              _buildActionCard(
-                context,
-                'Att. Reports',
-                Icons.analytics_outlined,
-                const Color(0xFF6366F1),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
-                      user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AttendanceReportScreen(project: project),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              _buildActionCard(
-                context,
-                'Documents',
-                Icons.folder_copy_outlined,
-                const Color(0xFF8B5CF6),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProjectManagementScreen(
-                      user: _currentUser!,
-                      onProjectTap: (project) => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DocumentsScreen(
-                            projectId: project.id,
-                            projectName: project.name,
-                            userId: _currentUser!.id,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              _buildActionCard(
-                context,
-                'Team',
-                Icons.group,
-                const Color(0xFF059669),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        TeamManagementScreen(user: _currentUser!),
-                  ),
-                ),
-              ),
-            ]
-          : [
-              _buildActionCard(
-                context,
-                'DPR Entry',
-                Icons.edit_document,
-                const Color(0xFF1E293B),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DPRScreen(
-                        project: _selectedProject!,
-                        user: _currentUser!,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                context,
-                'Reports',
-                Icons.insights,
-                const Color(0xFF3B82F6),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ReportsListScreen(project: _selectedProject!),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                context,
-                'Attendance',
-                Icons.people_alt,
-                const Color(0xFF10B981),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AttendanceScreen(
-                        project: _selectedProject!,
-                        user: _currentUser!,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                context,
-                'Tasks',
-                Icons.task_alt,
-                const Color(0xFFF59E0B),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TasksScreen(
-                        project: _selectedProject!,
-                        user: _currentUser!,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                context,
-                'Procure/Stock',
-                Icons.inventory_2_outlined,
-                const Color(0xFFEC4899),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => InventoryScreen(
-                        project: _selectedProject!,
-                        user: _currentUser!,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                context,
-                'Documents',
-                Icons.folder_copy_outlined,
-                const Color(0xFF8B5CF6),
-                () {
-                  if (_selectedProject == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select a project first'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DocumentsScreen(
-                        projectId: _selectedProject!.id,
-                        projectName: _selectedProject!.name,
-                        userId: _currentUser!.id,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildRecentActivity() {
-    final projectId = _selectedProject?.id;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -785,7 +489,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(
                     builder: (context) => NotificationScreen(
                       user: _currentUser!,
-                      selectedProject: _selectedProject,
                     ),
                   ),
                 );
@@ -798,7 +501,6 @@ class _HomeScreenState extends State<HomeScreen> {
         FutureBuilder<List<dynamic>>(
           future: _apiService.getRecentActivity(
             organizationId: _currentUser!.organizationId!,
-            projectId: projectId,
             userId: _currentUser!.id,
           ),
           builder: (context, snapshot) {
@@ -930,13 +632,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () {
         final projectId = req['project_id'];
-        final project = _assignedProjects.firstWhere(
-          (p) => p.id == projectId,
-          orElse: () => Project(
-            id: projectId,
-            name: req['project_name'],
-            status: 'active',
-          ),
+        final project = Project(
+          id: projectId,
+          name: req['project_name'],
+          status: 'active',
         );
         Navigator.push(
           context,

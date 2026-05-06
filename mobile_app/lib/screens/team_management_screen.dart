@@ -83,10 +83,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                   value: 'supervisor',
                   child: Text('Supervisor'),
                 ),
-                DropdownMenuItem(
-                  value: 'material_manager',
-                  child: Text('Material Manager'),
-                ),
                 DropdownMenuItem(value: 'owner', child: Text('Owner')),
               ],
               onChanged: (value) => selectedRole = value!,
@@ -270,8 +266,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
         return Colors.green;
       case 'supervisor':
         return Colors.blue;
-      case 'material_manager':
-        return Colors.orange;
       default:
         return Colors.grey;
     }

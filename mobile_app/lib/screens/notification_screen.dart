@@ -8,11 +8,9 @@ import 'inventory_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   final User user;
-  final Project? selectedProject;
   const NotificationScreen({
     super.key,
     required this.user,
-    this.selectedProject,
   });
 
   @override
@@ -38,7 +36,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
       // Fetching more activity for the dedicated screen
       final data = await _apiService.getRecentActivity(
         organizationId: widget.user.organizationId!,
-        projectId: widget.selectedProject?.id,
         userId: widget.user.id,
       );
       setState(() {

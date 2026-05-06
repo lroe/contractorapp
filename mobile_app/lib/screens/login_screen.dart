@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,38 +12,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
   final _apiService = ApiService();
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   bool _isLoading = false;
-
-  Future<void> _handleLogin() async {
-    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter phone and password')),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final user = await _apiService.login(
-        _phoneController.text,
-        _passwordController.text,
-      );
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home', arguments: user);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   Future<void> _handleGoogleLogin() async {
     setState(() => _isLoading = true);
@@ -96,8 +68,14 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Logo
+              SvgPicture.asset(
+                'assets/logo.svg',
+                height: 100,
+              ),
+              const SizedBox(height: 24),
               Text(
-                'Contractor DB',
+                'Nirmitha',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 32,
@@ -105,74 +83,43 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: const Color(0xFF1E293B),
                 ),
               ),
+              const SizedBox(height: 12),
+              Text(
+                'Contractor Management Made Simple',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
               const SizedBox(height: 48),
-              _buildTextField(
-                _phoneController,
-                'Phone Number',
-                Icons.phone,
-                TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                _passwordController,
-                'Password',
-                Icons.lock,
-                TextInputType.text,
-                isObscure: true,
-              ),
-              const SizedBox(height: 32),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildLoginButton(
-                          'Login with Password',
-                          const Color(0xFF1E293B),
-                          _handleLogin,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            const Expanded(child: Divider()),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Text(
-                                'OR',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            const Expanded(child: Divider()),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
-                          child: OutlinedButton.icon(
+                          child: ElevatedButton.icon(
                             onPressed: _handleGoogleLogin,
                             icon: const Icon(
-                              Icons.g_mobiledata,
+                              Icons.mail_outline,
                               size: 24,
-                              color: Colors.black87,
                             ),
                             label: const Flexible(
                               child: Text(
-                                'Continue with Google',
+                                'Sign In with Gmail',
                                 textAlign: TextAlign.center,
                                 softWrap: true,
                                 style: TextStyle(
-                                  color: Colors.black87,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                            style: OutlinedButton.styleFrom(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E293B),
+                              foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -182,55 +129,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-              const SizedBox(height: 24),
-              const Text(
-                'Sample Credentials:\nOwner: 9000000001 / pass123\nSupervisor: 9000000005 / pass123',
+              const SizedBox(height: 32),
+              Text(
+                '© 2026 Nirmitha. All rights reserved.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  color: const Color(0xFF94A3B8),
+                ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String hint,
-    IconData icon,
-    TextInputType type, {
-    bool isObscure = false,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: type,
-      obscureText: isObscure,
-      decoration: InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFF64748B)),
-        filled: true,
-        fillColor: const Color(0xFFF8FAFC),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoginButton(String label, Color color, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }

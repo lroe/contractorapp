@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle (Earth tone) -->
+  <circle cx="100" cy="100" r="90" fill="#795548" opacity="0.1"/>
+
+  <!-- Yantra-inspired Geometric Structure -->
+  <!-- Left 'Support' Structure -->
+  <path d="M70 60V140H90V100L70 60Z" fill="#2E7D32"/> <!-- Rich Green -->
+  
+  <!-- Right 'Support' Structure -->
+  <path d="M130 60V140H110V100L130 60Z" fill="#1B5E20"/> <!-- Darker Green -->
+  
+  <!-- Connecting Diagonal (The 'Creation' Flow) -->
+  <path d="M70 60L110 140H130L90 60H70Z" fill="#A5D6A7"/> <!-- Pale Mint Green -->
+
+  <!-- A subtle 'bindu' (point of origin) -->
+  <circle cx="100" cy="100" r="5" fill="#FFC107"/> <!-- Gold Accent -->
+</svg>

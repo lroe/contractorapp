@@ -221,18 +221,7 @@ class _ProjectManagementScreenState extends State<ProjectManagementScreen> {
         onTap: () {
           if (widget.onProjectTap != null) {
             widget.onProjectTap!(project);
-            return;
           }
-          // Default: Navigate to assign supervisor
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AssignSupervisorScreen(
-                project: project,
-                organizationId: widget.user!.organizationId!,
-              ),
-            ),
-          );
         },
       ),
     );

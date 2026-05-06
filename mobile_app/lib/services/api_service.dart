@@ -6,18 +6,6 @@ import '../models/models.dart';
 import '../config.dart';
 
 class ApiService {
-  Future<User> login(String phone, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/login/?phone=$phone&password=$password'),
-    );
-
-    if (response.statusCode == 200) {
-      return User.fromJson(json.decode(response.body));
-    } else {
-      throw Exception('Failed to login: ${response.body}');
-    }
-  }
-
   Future<User> googleLogin({String? idToken, String? accessToken}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/google/'),
