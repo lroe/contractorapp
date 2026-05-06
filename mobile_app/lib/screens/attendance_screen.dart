@@ -1,10 +1,12 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../services/offline_attendance_manager.dart';
+import '../services/sync_queue_manager.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final Project project;
@@ -19,24 +21,66 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _gangs = [];
   bool _isLoading = true;
+  bool _isOnline = true;
 
   @override
   void initState() {
     super.initState();
+    _initializeOfflineManager();
+    _checkConnectivity();
     _loadGangs();
+  }
+
+  Future<void> _initializeOfflineManager() async {
+    await OfflineAttendanceManager.initialize();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOnline = !connectivityResult.contains(ConnectivityResult.none);
+    });
+
+    // Listen for connectivity changes
+    Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _isOnline = !result.contains(ConnectivityResult.none);
+      });
+    });
   }
 
   Future<void> _loadGangs() async {
     setState(() => _isLoading = true);
     try {
-      final gangs = await _apiService.getGangs(widget.project.id);
-      setState(() {
-        _gangs = gangs;
-        _isLoading = false;
-      });
+      if (_isOnline) {
+        // Load from API and cache locally
+        final gangs = await _apiService.getGangs(widget.project.id);
+        setState(() {
+          _gangs = gangs;
+          _isLoading = false;
+        });
+        // Cache gangs for offline use
+        await OfflineAttendanceManager.cacheGangs(widget.project.id, gangs);
+      } else {
+        // Load from cache
+        final cachedGangs = OfflineAttendanceManager.getCachedGangs(widget.project.id);
+        setState(() {
+          _gangs = cachedGangs;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      // Try to load from cache if API fails
+      final cachedGangs = OfflineAttendanceManager.getCachedGangs(widget.project.id);
+      if (cachedGangs.isNotEmpty) {
+        setState(() {
+          _gangs = cachedGangs;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -91,6 +135,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Text(widget.project.name, style: GoogleFonts.outfit(fontSize: 12, color: const Color(0xFF64748B))),
         ]),
         actions: [
+          if (!_isOnline)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text('Offline', style: GoogleFonts.outfit(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           IconButton(onPressed: _showCreateGangDialog, icon: const Icon(Icons.group_add_outlined, color: Color(0xFF1E293B))),
         ],
       ),
@@ -128,7 +188,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildGangCard(dynamic gang) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         title: Text(gang['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
@@ -160,6 +220,28 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
   final Map<String, String> _attendanceMap = {}; // workerId -> status
   XFile? _groupPhoto;
   final ImagePicker _picker = ImagePicker();
+  bool _isOnline = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivity();
+    _loadWorkers();
+  }
+
+  Future<void> _checkConnectivity() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    setState(() {
+      _isOnline = !connectivityResult.contains(ConnectivityResult.none);
+    });
+
+    // Listen for connectivity changes
+    Connectivity().onConnectivityChanged.listen((result) {
+      setState(() {
+        _isOnline = !result.contains(ConnectivityResult.none);
+      });
+    });
+  }
 
   Future<void> _pickPhoto() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
@@ -168,46 +250,93 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadWorkers();
-  }
-
   Future<void> _loadWorkers() async {
     setState(() => _isLoading = true);
     try {
       final now = DateTime.now();
       final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      
-      final results = await Future.wait<dynamic>([
-        _apiService.getWorkers(widget.gang['id']),
-        _apiService.getGangAttendance(widget.gang['id'], dateStr),
-      ]);
-      
-      final workers = results[0] as List<dynamic>;
-      final existingAttendance = results[1] as List<dynamic>;
 
-      setState(() {
-        _workers = workers;
-        
-        // 1. Pre-fill from backend if exists
-        for (var att in existingAttendance) {
-          _attendanceMap[att['worker_id'].toString()] = att['status'];
-        }
+      if (_isOnline) {
+        // Load from API and cache locally
+        final results = await Future.wait<dynamic>([
+          _apiService.getWorkers(widget.gang['id']),
+          _apiService.getGangAttendance(widget.gang['id'], dateStr),
+        ]);
 
-        // 2. Default others to 'present' only if they aren't already set locally
-        for (var w in _workers) {
-          final id = w['id'].toString();
-          if (!_attendanceMap.containsKey(id)) {
-            _attendanceMap[id] = 'present';
+        final workers = results[0] as List<dynamic>;
+        final existingAttendance = results[1] as List<dynamic>;
+
+        setState(() {
+          _workers = workers;
+
+          // 1. Pre-fill from backend if exists
+          for (var att in existingAttendance) {
+            _attendanceMap[att['worker_id'].toString()] = att['status'];
           }
-        }
-        _isLoading = false;
-      });
+
+          // 2. Default others to 'present' only if they aren't already set locally
+          for (var w in _workers) {
+            final id = w['id'].toString();
+            if (!_attendanceMap.containsKey(id)) {
+              _attendanceMap[id] = 'present';
+            }
+          }
+          _isLoading = false;
+        });
+
+        // Cache workers for offline use
+        await OfflineAttendanceManager.cacheWorkers(widget.gang['id'], workers);
+      } else {
+        // Load from cache
+        final cachedWorkers = OfflineAttendanceManager.getCachedWorkers(widget.gang['id']);
+        final localAttendance = OfflineAttendanceManager.getAttendanceForGang(widget.gang['id'], now);
+
+        setState(() {
+          _workers = cachedWorkers;
+
+          // Load local attendance data
+          for (var att in localAttendance) {
+            _attendanceMap[att.workerId] = att.status;
+          }
+
+          // Default others to 'present' if not set
+          for (var w in _workers) {
+            final id = w['id'].toString();
+            if (!_attendanceMap.containsKey(id)) {
+              _attendanceMap[id] = 'present';
+            }
+          }
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      // Try to load from cache if API fails
+      final cachedWorkers = OfflineAttendanceManager.getCachedWorkers(widget.gang['id']);
+      final now = DateTime.now();
+      final localAttendance = OfflineAttendanceManager.getAttendanceForGang(widget.gang['id'], now);
+
+      if (cachedWorkers.isNotEmpty) {
+        setState(() {
+          _workers = cachedWorkers;
+
+          // Load local attendance data
+          for (var att in localAttendance) {
+            _attendanceMap[att.workerId] = att.status;
+          }
+
+          // Default others to 'present' if not set
+          for (var w in _workers) {
+            final id = w['id'].toString();
+            if (!_attendanceMap.containsKey(id)) {
+              _attendanceMap[id] = 'present';
+            }
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -267,6 +396,22 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
         elevation: 0,
         title: Text(widget.gang['name'], style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
         actions: [
+          if (!_isOnline)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text('Offline', style: GoogleFonts.outfit(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
           IconButton(onPressed: _showAddWorkerDialog, icon: const Icon(Icons.person_add_alt_1_outlined, color: Color(0xFF1E293B))),
         ],
       ),
@@ -381,28 +526,84 @@ class _GangDetailScreenState extends State<GangDetailScreen> {
     try {
       final now = DateTime.now();
       final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-      
-      for (var entry in _attendanceMap.entries) {
-        await _apiService.submitAttendance({
-          'project_id': widget.project.id,
-          'worker_id': entry.key,
-          'gang_id': widget.gang['id'],
-          'entry_date': dateStr,
-          'status': entry.value,
-          'marked_by': widget.user.id,
-        });
-      }
 
+      // Save group photo locally if taken
+      String? localPhotoPath;
       if (_groupPhoto != null) {
-        await _apiService.uploadAttendancePhoto(
+        localPhotoPath = await OfflineAttendanceManager.saveGroupPhoto(
           widget.gang['id'],
-          dateStr,
+          now,
           _groupPhoto!.path,
         );
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance submitted successfully!')));
-        Navigator.pop(context);
+
+      if (_isOnline) {
+        // Submit to server directly
+        for (var entry in _attendanceMap.entries) {
+          await _apiService.submitAttendance({
+            'project_id': widget.project.id,
+            'worker_id': entry.key,
+            'gang_id': widget.gang['id'],
+            'entry_date': dateStr,
+            'status': entry.value,
+            'marked_by': widget.user.id,
+          });
+        }
+
+        if (_groupPhoto != null) {
+          await _apiService.uploadAttendancePhoto(
+            widget.gang['id'],
+            dateStr,
+            _groupPhoto!.path,
+          );
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance submitted successfully!')));
+          Navigator.pop(context);
+        }
+      } else {
+        // Save locally and queue for sync
+        for (var entry in _attendanceMap.entries) {
+          final attendanceId = '${widget.gang['id']}_${entry.key}_$dateStr';
+          final attendance = Attendance(
+            id: attendanceId,
+            workerId: entry.key,
+            gangId: widget.gang['id'],
+            date: now,
+            status: entry.value,
+            isSynced: false,
+            groupPhotoPath: localPhotoPath,
+          );
+
+          await OfflineAttendanceManager.saveAttendanceRecord(attendance);
+
+          // Add to sync queue
+          await SyncQueueManager.queueOperation(
+            'attendance',
+            {
+              'project_id': widget.project.id,
+              'worker_id': entry.key,
+              'gang_id': widget.gang['id'],
+              'entry_date': dateStr,
+              'status': entry.value,
+              'marked_by': widget.user.id,
+              'group_photo_path': localPhotoPath,
+            },
+            customId: attendanceId,
+          );
+        }
+
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Attendance saved offline. Will sync when online.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);

@@ -204,13 +204,14 @@ class AttendanceAdapter extends TypeAdapter<Attendance> {
       date: fields[3] as DateTime,
       status: fields[4] as String,
       isSynced: fields[5] as bool,
+      groupPhotoPath: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Attendance obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -222,7 +223,9 @@ class AttendanceAdapter extends TypeAdapter<Attendance> {
       ..writeByte(4)
       ..write(obj.status)
       ..writeByte(5)
-      ..write(obj.isSynced);
+      ..write(obj.isSynced)
+      ..writeByte(6)
+      ..write(obj.groupPhotoPath);
   }
 
   @override
@@ -281,6 +284,64 @@ class ProjectDocumentAdapter extends TypeAdapter<ProjectDocument> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ProjectDocumentAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
+}
+
+class DailyProgressReportAdapter extends TypeAdapter<DailyProgressReport> {
+  @override
+  final int typeId = 6;
+
+  @override
+  DailyProgressReport read(BinaryReader reader) {
+    final numOfFields = reader.readByte();
+    final fields = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    return DailyProgressReport(
+      id: fields[0] as String,
+      projectId: fields[1] as String,
+      supervisorId: fields[2] as String,
+      entryDate: fields[3] as DateTime,
+      remarks: fields[4] as String?,
+      linkedTaskId: fields[5] as String?,
+      createdAt: fields[6] as DateTime,
+      isSynced: fields[7] as bool,
+      mediaFilePaths: (fields[8] as List).cast<String>(),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, DailyProgressReport obj) {
+    writer
+      ..writeByte(9)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.projectId)
+      ..writeByte(2)
+      ..write(obj.supervisorId)
+      ..writeByte(3)
+      ..write(obj.entryDate)
+      ..writeByte(4)
+      ..write(obj.remarks)
+      ..writeByte(5)
+      ..write(obj.linkedTaskId)
+      ..writeByte(6)
+      ..write(obj.createdAt)
+      ..writeByte(7)
+      ..write(obj.isSynced)
+      ..writeByte(8)
+      ..write(obj.mediaFilePaths);
+  }
+
+  @override
+  int get hashCode => typeId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DailyProgressReportAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
+import '../services/session_manager.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,6 +34,11 @@ class _LoginScreenState extends State<LoginScreen> {
             idToken: auth.idToken,
             accessToken: auth.accessToken,
           );
+          
+          // SAVE SESSION FOR AUTO-LOGIN
+          await SessionManager.saveSession(user, token: auth.idToken ?? auth.accessToken);
+          print('[LoginScreen] Session saved for auto-login');
+          
           if (!mounted) return;
           Navigator.pushReplacementNamed(context, '/home', arguments: user);
           return;

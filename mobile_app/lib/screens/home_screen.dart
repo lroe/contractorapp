@@ -12,6 +12,8 @@ import 'team_management_screen.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
+import '../services/session_manager.dart';
+import '../services/network_connectivity.dart';
 import '../config.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,13 +25,18 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final NetworkConnectivity _connectivity = NetworkConnectivity();
   User? _currentUser;
   List<Project> _projects = [];
   bool _isLoading = false;
+  bool _isOnline = true;
 
   @override
   void initState() {
     super.initState();
+    _isOnline = _connectivity.isOnline;
+    _connectivity.addListener(_onConnectivityChanged);
+    
     WebSocketService().connect((message) {
       if (mounted) {
         // Refresh recent activity on any relevant update
@@ -48,9 +55,33 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _onConnectivityChanged(bool isOnline) {
+    if (mounted) {
+      setState(() => _isOnline = isOnline);
+      if (isOnline) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Connection restored'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠ You are offline - using cached data'),
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     WebSocketService().disconnect();
+    _connectivity.removeListener(_onConnectivityChanged);
     super.dispose();
   }
 
@@ -168,7 +199,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  void _logout() {
+  void _logout() async {
+    // Clear session for proper logout
+    await SessionManager.clearSession();
+    print('[HomeScreen] Session cleared on logout');
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
@@ -190,14 +224,37 @@ class _HomeScreenState extends State<HomeScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                user.role == 'owner' ? 'Business Owner' : 'Team Member',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
-                  color: const Color(0xFF64748B),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  Text(
+                    user.role == 'owner' ? 'Business Owner' : 'Team Member',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      color: const Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (!_isOnline)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'OFFLINE',
+                          style: GoogleFonts.outfit(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -222,12 +279,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsRow(bool isOwner) {
+    // If offline, show cached or default stats
+    if (!_isOnline) {
+      return Row(
+        children: [
+          _buildStatCard(
+            isOwner ? 'Active Projects' : 'Pending Tasks',
+            '--',
+            isOwner ? Colors.blue : Colors.orange,
+          ),
+          const SizedBox(width: 16),
+          _buildStatCard(
+            isOwner ? 'Total Revenue' : 'Active Tasks',
+            '--',
+            isOwner ? Colors.green : Colors.blue,
+          ),
+        ],
+      );
+    }
+
     return FutureBuilder<Map<String, dynamic>>(
       future: _apiService.getDashboardStats(
         _currentUser!.organizationId!,
         _currentUser!.id,
       ),
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Row(
+            children: [
+              Expanded(child: Center(child: CircularProgressIndicator())),
+              SizedBox(width: 16),
+              Expanded(child: Center(child: CircularProgressIndicator())),
+            ],
+          );
+        }
 
         final stats =
             snapshot.data ??
@@ -498,43 +583,112 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        FutureBuilder<List<dynamic>>(
-          future: _apiService.getRecentActivity(
-            organizationId: _currentUser!.organizationId!,
-            userId: _currentUser!.id,
-          ),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.red),
+        // Check if offline first
+        if (!_isOnline)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.orange[50],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.orange[200]!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.cloud_off, color: Colors.orange[700], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'You are currently offline',
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[800],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            }
-            final activities = snapshot.data ?? [];
-            if (activities.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24.0),
-                  child: Text(
-                    'No activity yet.',
-                    style: TextStyle(color: Color(0xFF94A3B8)),
+                const SizedBox(height: 8),
+                Text(
+                  'Recent activity will load when you\'re back online. You can still create project reports offline.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Colors.orange[700],
                   ),
                 ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Navigate to DPR creation
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProjectManagementScreen(
+                          user: _currentUser!,
+                          onProjectTap: (project) => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => DPRScreen(
+                                project: project,
+                                user: _currentUser!,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.edit_document),
+                  label: const Text('Create Report'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          FutureBuilder<List<dynamic>>(
+            future: _apiService.getRecentActivity(
+              organizationId: _currentUser!.organizationId!,
+              userId: _currentUser!.id,
+            ),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              }
+              final activities = snapshot.data ?? [];
+              if (activities.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Text(
+                      'No activity yet.',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
+                  ),
+                );
+              }
+              final previewActivities = activities.take(3).toList();
+              return Column(
+                children: previewActivities
+                    .map((activity) => _buildActivityTile(activity))
+                    .toList(),
               );
-            }
-            final previewActivities = activities.take(3).toList();
-            return Column(
-              children: previewActivities
-                  .map((activity) => _buildActivityTile(activity))
-                  .toList(),
-            );
-          },
-        ),
+            },
+          ),
       ],
     );
   }

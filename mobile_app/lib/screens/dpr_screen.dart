@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
+import '../services/network_connectivity.dart';
+import '../services/offline_dpr_manager.dart';
+import '../services/sync_queue_manager.dart';
 import '../models/models.dart';
 import 'report_detail_screen.dart';
 import '../config.dart';
@@ -21,7 +24,9 @@ class _DPRScreenState extends State<DPRScreen> {
   final ImagePicker _picker = ImagePicker();
   final _remarksController = TextEditingController();
   bool _isLoading = false;
+  bool _isOnline = true;
   final ApiService _apiService = ApiService();
+  final NetworkConnectivity _connectivity = NetworkConnectivity();
 
   List<dynamic> _tasks = [];
   String? _selectedTaskId;
@@ -30,14 +35,25 @@ class _DPRScreenState extends State<DPRScreen> {
   @override
   void initState() {
     super.initState();
+    _isOnline = _connectivity.isOnline;
+    _connectivity.addListener(_onConnectivityChanged);
     _loadTasks();
+  }
+
+  void _onConnectivityChanged(bool isOnline) {
+    if (mounted) {
+      setState(() => _isOnline = isOnline);
+    }
   }
 
   Future<void> _loadTasks() async {
     try {
       final tasks = await _apiService.getProjectTasks(widget.project.id);
       if (mounted) setState(() => _tasks = tasks.where((t) => t['status'] != 'completed').toList());
-    } catch (_) {} // non-critical
+    } catch (e) {
+      print('[DPRScreen] Error loading tasks (expected offline): $e');
+      // Tasks will remain empty in offline mode
+    }
   }
 
   Future<void> _pickMedia() async {
@@ -51,7 +67,9 @@ class _DPRScreenState extends State<DPRScreen> {
 
   Future<void> _submitReport() async {
     if (_remarksController.text.isEmpty && _mediaFiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add remarks or a photo')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add remarks or a photo'))
+      );
       return;
     }
 
@@ -71,19 +89,71 @@ class _DPRScreenState extends State<DPRScreen> {
         "linked_task_id": _selectedTaskId,
       };
 
-      final dprResponse = await _apiService.submitDPR(dprData);
+      if (_isOnline) {
+        // Online: Submit directly to server
+        final dprResponse = await _apiService.submitDPR(dprData);
 
-      // Upload images if any were selected
-      if (_mediaFiles.isNotEmpty) {
-        final dprId = dprResponse['id'].toString();
-        await _apiService.uploadDPRMedia(dprId, _mediaFiles);
+        // Upload images if any were selected
+        if (_mediaFiles.isNotEmpty) {
+          final dprId = dprResponse['id'].toString();
+          await _apiService.uploadDPRMedia(dprId, _mediaFiles);
+        }
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Report Submitted Successfully!'),
+            backgroundColor: Colors.green,
+          )
+        );
+      } else {
+        // Offline: Save locally
+        final dprId = 'offline_${DateTime.now().millisecondsSinceEpoch}';
+        
+        // Save media files locally
+        List<String> savedMediaPaths = [];
+        if (_mediaFiles.isNotEmpty) {
+          savedMediaPaths = await OfflineDPRManager.saveMediaFiles(
+            _mediaFiles.map((f) => f.path).toList()
+          );
+        }
+
+        // Create and save DPR locally
+        final offlineDPR = DailyProgressReport(
+          id: dprId,
+          projectId: widget.project.id,
+          supervisorId: widget.user.id,
+          entryDate: DateTime.now(),
+          remarks: _remarksController.text,
+          linkedTaskId: _selectedTaskId,
+          createdAt: DateTime.now(),
+          isSynced: false,
+          mediaFilePaths: savedMediaPaths,
+        );
+
+        await OfflineDPRManager.saveDPRReport(offlineDPR);
+
+        // Queue for sync
+        await SyncQueueManager.queueOperation('dpr', dprData, customId: dprId);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Report saved locally - will sync when online'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          )
+        );
       }
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report Submitted Successfully!')));
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      print('[DPRScreen] Error submitting report: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'))
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -94,6 +164,13 @@ class _DPRScreenState extends State<DPRScreen> {
       context,
       MaterialPageRoute(builder: (context) => ReportsListScreen(project: widget.project)),
     );
+  }
+
+  @override
+  void dispose() {
+    _connectivity.removeListener(_onConnectivityChanged);
+    _remarksController.dispose();
+    super.dispose();
   }
 
   @override
@@ -114,13 +191,44 @@ class _DPRScreenState extends State<DPRScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!_isOnline)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[50],
+                      border: Border.all(color: Colors.orange[300]!),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off, color: Colors.orange[700], size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'You are offline. Reports will be saved locally and synced when online.',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color: Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 _buildInfoCard(),
                 const SizedBox(height: 24),
                 _buildInputLabel('Update / Remarks'),
                 const SizedBox(height: 8),
                 _buildTextField(_remarksController, 'What happened on site today?', TextInputType.multiline, maxLines: 5),
                 const SizedBox(height: 24),
-                _buildTaskSelector(),
+                if (_isOnline)
+                  _buildTaskSelector()
+                else
+                  Opacity(
+                    opacity: 0.5,
+                    child: _buildTaskSelector(),
+                  ),
                 const SizedBox(height: 28),
                 _buildMediaSection(),
                 const SizedBox(height: 48),
