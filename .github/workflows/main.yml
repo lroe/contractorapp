@@ -1,0 +1,42 @@
+name: Build iOS (Flutter)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: mobile_app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.x'
+          cache: true
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          cd ios && pod install
+
+      - name: Build iOS IPA (Unsigned)
+        run: flutter build ipa --release --no-codesign
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nirmitha-iOS-IPA
+          path: mobile_app/build/ios/ipa/*.ipa
+          retention-days: 30
