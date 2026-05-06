@@ -20,16 +20,11 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.x'     # Updated to match your pubspec
+          flutter-version: '3.41.x'
           channel: 'stable'
           cache: true
 
-      - name: Check versions
-        run: |
-          flutter --version
-          flutter doctor -v
-
-      - name: Get Flutter dependencies
+      - name: Get dependencies
         run: flutter pub get
 
       - name: Install CocoaPods
@@ -37,13 +32,19 @@ jobs:
           sudo gem install cocoapods
           cd ios && pod install
 
-      - name: Build iOS IPA (Unsigned)
-        run: flutter build ipa --release --no-codesign
+      - name: Build IPA
+        run: flutter build ipa --release --no-codesign --verbose
 
-      - name: Upload IPA Artifact
-        if: success()
+      - name: 🔍 Debug Build Output
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Looking for .ipa files ==="
+          find . -name "*.ipa" -type f
+
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: Nirmitha-iOS-IPA
           path: mobile_app/build/ios/ipa/*.ipa
-          retention-days: 30
+          retention-days: 7
