@@ -8,9 +8,9 @@
   </div>
   <div style="display:flex;gap:10px">
     {% if selected_project %}
-    <button class="btn btn-green" onclick="openModal('receive-modal')">+ Receive Material</button>
+    <button class="btn btn-primary" onclick="openModal('receive-modal')">+ Receive Material</button>
     <button class="btn btn-red" onclick="openModal('consume-modal')">− Log Consumption</button>
-    <button class="btn btn-ghost" onclick="openModal('adjust-modal')">⚙️ Adjust Stock</button>
+    <button class="btn btn-secondary" onclick="openModal('adjust-modal')">Adjust Stock</button>
     {% endif %}
   </div>
 </div>
@@ -40,20 +40,20 @@
   <!-- Current Inventory Snapshot -->
   <div>
     <div class="card">
-      <div class="card-header"><span class="card-title">📦 Current Stock Snapshot</span></div>
+      <div class="card-header"><span class="card-title">Current Stock Snapshot</span></div>
       {% if inventory %}
-      <div class="table-wrap" style="border:none;border-radius:0">
+      <div class="table-wrap">
         <table>
           <thead><tr><th>Material</th><th>Stock</th><th>Unit</th></tr></thead>
           <tbody>
           {% for inv in inventory %}
           {% set qty = inv.current_quantity|float %}
           <tr>
-            <td>{{ inv.material.name if inv.material else '—' }}</td>
+            <td><strong>{{ inv.material.name if inv.material else '—' }}</strong></td>
             <td>
-              <strong style="color:{{ '#DC2626' if qty <= 0 else '#0F172A' }}">
+              <span style="color:{{ 'var(--red)' if qty <= 0 else 'var(--text)' }}; font-weight: 700;">
                 {{ "%.2f"|format(qty) }}
-              </strong>
+              </span>
             </td>
             <td>{{ inv.material.unit if inv.material else '' }}</td>
           </tr>
@@ -62,9 +62,7 @@
         </table>
       </div>
       {% else %}
-      <div class="empty-state" style="padding:30px">
-        <div class="icon">📦</div><h3>No stock recorded yet</h3>
-      </div>
+      <div class="empty-state">No stock recorded yet</div>
       {% endif %}
     </div>
   </div>
@@ -77,7 +75,7 @@
         <span style="font-size:12px;color:var(--muted)">Last 100 entries</span>
       </div>
       {% if ledger %}
-      <div class="table-wrap" style="border:none;border-radius:0">
+      <div class="table-wrap">
         <table>
           <thead><tr><th>Date</th><th>Material</th><th>Type</th><th>Qty</th><th>Ref</th></tr></thead>
           <tbody>
@@ -86,12 +84,14 @@
             <td style="white-space:nowrap;color:var(--muted);font-size:12px">{{ entry.entry_date }}</td>
             <td><strong>{{ entry.material.name if entry.material else '—' }}</strong></td>
             <td>
-              <span class="badge badge-{{ entry.movement_type }}">
-                {{ entry.movement_type | replace('_',' ') }}
+              {% set mtype = entry.movement_type %}
+              {% set badge_cls = 'received' if mtype in ('inward','transfer_in','adjustment_in') else 'cancelled' %}
+              <span class="badge badge-{{ badge_cls }}">
+                {{ mtype | replace('_',' ') | title }}
               </span>
             </td>
             <td>
-              <span style="color:{{ '#10B981' if entry.movement_type in ('inward','transfer_in','adjustment_in') else '#EF4444' }};font-weight:600">
+              <span style="color:{{ 'var(--green)' if entry.movement_type in ('inward','transfer_in','adjustment_in') else 'var(--red)' }};font-weight:700">
                 {{ '+' if entry.movement_type in ('inward','transfer_in','adjustment_in') else '−' }}{{ "%.2f"|format(entry.quantity|float) }}
               </span>
             </td>
@@ -102,9 +102,7 @@
         </table>
       </div>
       {% else %}
-      <div class="empty-state" style="padding:40px">
-        <div class="icon">📋</div><h3>No movements recorded yet</h3>
-      </div>
+      <div class="empty-state">No movements recorded yet</div>
       {% endif %}
     </div>
   </div>
@@ -119,26 +117,26 @@
     <div class="modal-title">Log Goods Receipt (Inward)</div>
     <form method="POST" action="{{ url_for('receive_material_web') }}">
       <input type="hidden" name="project_id" value="{{ selected_id }}"/>
-      <div class="form-group" style="margin-bottom:14px">
+      <div class="form-group">
         <label>Material Received *</label>
         <select name="material_id" required>
           <option value="">Select material…</option>
           {% for m in materials %}<option value="{{ m.id }}">{{ m.name }} ({{ m.unit }})</option>{% endfor %}
         </select>
       </div>
-      <div class="form-grid cols-2" style="margin-bottom:14px">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px">
         <div class="form-group">
           <label>Quantity *</label>
           <input type="number" name="quantity" step="0.01" min="0.01" required/>
         </div>
         <div class="form-group">
           <label>Source / Vendor</label>
-          <input type="text" name="remarks" placeholder="e.g. Local purchase, Vendor name"/>
+          <input type="text" name="remarks" placeholder="e.g. Local purchase"/>
         </div>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('receive-modal')">Cancel</button>
-        <button type="submit" class="btn btn-green">Add to Stock</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('receive-modal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add to Stock</button>
       </div>
     </form>
   </div>
@@ -150,7 +148,7 @@
     <div class="modal-title">Log Material Consumption</div>
     <form method="POST" action="{{ url_for('consume_stock') }}">
       <input type="hidden" name="project_id" value="{{ selected_id }}"/>
-      <div class="form-group" style="margin-bottom:14px">
+      <div class="form-group">
         <label>Material Used *</label>
         <select name="material_id" required>
           <option value="">Select material…</option>
@@ -159,12 +157,12 @@
           {% endfor %}
         </select>
       </div>
-      <div class="form-group" style="margin-bottom:20px">
+      <div class="form-group">
         <label>Quantity Consumed *</label>
         <input type="number" name="quantity" step="0.01" min="0.01" required placeholder="e.g. 10"/>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('consume-modal')">Cancel</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('consume-modal')">Cancel</button>
         <button type="submit" class="btn btn-red">Deduct from Stock</button>
       </div>
     </form>
@@ -177,14 +175,14 @@
     <div class="modal-title">Manual Stock Adjustment</div>
     <form method="POST" action="{{ url_for('adjust_stock') }}">
       <input type="hidden" name="project_id" value="{{ selected_id }}"/>
-      <div class="form-group" style="margin-bottom:14px">
+      <div class="form-group">
         <label>Material *</label>
         <select name="material_id" required>
           <option value="">Select material…</option>
           {% for m in materials %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
         </select>
       </div>
-      <div class="form-grid cols-2" style="margin-bottom:14px">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px">
         <div class="form-group">
           <label>Adjustment Type *</label>
           <select name="type" required>
@@ -197,8 +195,8 @@
           <input type="number" name="quantity" step="0.01" min="0.01" required/>
         </div>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('adjust-modal')">Cancel</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('adjust-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Adjustment</button>
       </div>
     </form>

@@ -17,57 +17,63 @@ window._materials = [
 </div>
 
 <!-- PO List -->
-{% if pos %}
-<div class="table-wrap card" style="margin-bottom:24px">
-  <table>
-    <thead>
-      <tr>
-        <th>PO Number</th><th>Project</th><th>Vendor</th><th>Items</th>
-        <th>Total (₹)</th><th>Delivery</th><th>Status</th><th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-    {% for po in pos %}
-    <tr>
-      <td><strong>{{ po.po_number or '—' }}</strong></td>
-      <td>
-        {% set proj_id = po.project_id %}
-        {% for p in projects %}{% if p.id == proj_id %}{{ p.name }}{% endif %}{% endfor %}
-      </td>
-      <td>{{ po.vendor.name if po.vendor else '—' }}</td>
-      <td>
-        <div style="font-size:12px;color:var(--muted)">
-          {% for item in po.items %}
-          {{ item.material.name if item.material else '?' }}: {{ item.quantity }}{% if not loop.last %}, {% endif %}
-          {% endfor %}
-        </div>
-      </td>
-      <td><strong>₹{{ "%.0f"|format(po.total_amount|float) }}</strong></td>
-      <td>{{ po.expected_delivery or '—' }}</td>
-      <td><span class="badge badge-{{ po.status }}">{{ po.status }}</span></td>
-      <td>
-        <div style="display:flex;gap:6px">
-          {% if po.status == 'draft' %}
-          <form method="POST" action="{{ url_for('approve_po', po_id=po.id) }}">
-            <button class="btn btn-green btn-sm" type="submit">✓ Approve</button>
-          </form>
-          <form method="POST" action="{{ url_for('cancel_po', po_id=po.id) }}"
-                onsubmit="return confirm('Cancel this PO?')">
-            <button class="btn btn-ghost btn-sm" type="submit">Cancel</button>
-          </form>
-          {% endif %}
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% else %}
 <div class="card">
-  <div class="empty-state"><div class="icon">📋</div><h3>No purchase orders yet</h3><p>Click "+ New PO" to create your first.</p></div>
+  <div class="card-header">
+    <span class="card-title">Recent Purchase Orders</span>
+  </div>
+  {% if pos %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>PO Number</th><th>Project</th><th>Vendor</th><th>Items</th>
+          <th>Total (₹)</th><th>Delivery</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for po in pos %}
+      <tr>
+        <td><strong>{{ po.po_number or '—' }}</strong></td>
+        <td>
+          {% set proj_id = po.project_id %}
+          {% for p in projects %}{% if p.id == proj_id %}{{ p.name }}{% endif %}{% endfor %}
+        </td>
+        <td>{{ po.vendor.name if po.vendor else '—' }}</td>
+        <td>
+          <div style="font-size:12px;color:var(--muted)">
+            {% for item in po.items %}
+            {{ item.material.name if item.material else '?' }}: {{ item.quantity }}{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </div>
+        </td>
+        <td><strong>₹{{ "%.0f"|format(po.total_amount|float) }}</strong></td>
+        <td>{{ po.expected_delivery or '—' }}</td>
+        <td><span class="badge badge-{{ po.status }}">{{ po.status | title }}</span></td>
+        <td>
+          <div style="display:flex;gap:6px">
+            {% if po.status == 'draft' %}
+            <form method="POST" action="{{ url_for('approve_po', po_id=po.id) }}">
+              <button class="btn btn-sm" type="submit">Approve</button>
+            </form>
+            <form method="POST" action="{{ url_for('cancel_po', po_id=po.id) }}"
+                  onsubmit="return confirm('Cancel this PO?')">
+              <button class="btn btn-red btn-sm" type="submit">Cancel</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h3>No purchase orders yet</h3>
+    <p>Click "+ New PO" to create your first.</p>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 
 <!-- Create PO Modal -->
 <div class="modal-overlay" id="create-po-modal">
@@ -75,7 +81,7 @@ window._materials = [
     <div class="modal-title">Create Purchase Order</div>
     <form method="POST" action="{{ url_for('create_po') }}">
 
-      <div class="form-grid cols-2" style="margin-bottom:14px">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px">
         <div class="form-group">
           <label>Project *</label>
           <select name="project_id" required>
@@ -92,7 +98,7 @@ window._materials = [
         </div>
       </div>
 
-      <div class="form-grid cols-2" style="margin-bottom:14px">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px">
         <div class="form-group">
           <label>Expected Delivery</label>
           <input type="date" name="expected_delivery"/>
@@ -104,7 +110,7 @@ window._materials = [
       </div>
 
       <!-- Line Items -->
-      <div style="margin-bottom:10px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">
+      <div style="margin-bottom:10px;font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.5px">
         Line Items
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr 36px;gap:8px;margin-bottom:6px;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase">
@@ -112,20 +118,20 @@ window._materials = [
       </div>
       <div id="po-items" class="po-items-container">
         <!-- Row 1 pre-filled -->
-        <div class="po-item-row">
+        <div class="po-item-row" style="display:grid; grid-template-columns: 2fr 1fr 1fr 36px; gap:8px; align-items:center;">
           <select name="material_id[]" required>
             <option value="">Select material…</option>
             {% for m in materials %}<option value="{{ m.id }}">{{ m.name }} ({{ m.unit }})</option>{% endfor %}
           </select>
           <input type="number" name="quantity[]" placeholder="Qty" min="0.01" step="0.01" required/>
           <input type="number" name="unit_price[]" placeholder="₹ / unit" min="0" step="0.01"/>
-          <button type="button" class="remove-row" onclick="this.closest('.po-item-row').remove()">×</button>
+          <button type="button" class="remove-row" onclick="this.closest('.po-item-row').remove()" style="background:none; border:none; color:var(--red); cursor:pointer; font-size:18px;">×</button>
         </div>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="addPOItem()">+ Add Item</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="addPOItem()">+ Add Item</button>
 
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('create-po-modal')">Cancel</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('create-po-modal')">Cancel</button>
         <button type="submit" class="btn btn-primary">Create PO</button>
       </div>
     </form>

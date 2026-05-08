@@ -6,7 +6,7 @@
     <div class="page-title">Price Comparisons: {{ material.name }}</div>
     <div class="page-subtitle">Unit: {{ material.unit }}</div>
   </div>
-  <a href="{{ url_for('vendors') }}" class="btn btn-ghost">← Back to Vendors</a>
+  <a href="{{ url_for('vendors') }}" class="btn btn-secondary">← Back to Vendors</a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 350px;gap:24px">
@@ -31,12 +31,12 @@
             </a>
           </td>
           <td>
-            <div style="width:100%;background:#F1F5F9;height:8px;border-radius:4px;overflow:hidden">
-              <div style="width:{{ width }}%;height:100%;background:{{ '#10B981' if loop.first else '#3B82F6' }};transition:width 0.5s"></div>
+            <div style="width:100%;background:#F1F5F9;height:6px;border-radius:3px;overflow:hidden">
+              <div style="width:{{ width }}%;height:100%;background:{{ 'var(--green)' if loop.first else 'var(--accent)' }};transition:width 0.5s"></div>
             </div>
           </td>
           <td>
-            <span style="font-weight:700;color:{{ '#10B981' if loop.first else 'inherit' }}">
+            <span style="font-weight:700;color:{{ 'var(--green)' if loop.first else 'var(--text)' }}">
               ₹{{ "%.2f"|format(p.price_per_unit) }}
             </span>
           </td>
@@ -45,11 +45,11 @@
               {% if loop.first %}
                 <span class="badge badge-received">BEST</span>
               {% else %}
-                <span style="color:#DC2626;font-size:12px;font-weight:500">+{{ "%.1f"|format(variance) }}%</span>
+                <span style="color:var(--red);font-size:12px;font-weight:600">+{{ "%.1f"|format(variance) }}%</span>
               {% endif %}
               
               <form method="POST" action="{{ url_for('delete_vendor_price', price_id=p.id) }}" style="display:inline" onsubmit="return confirm('Remove this price point?')">
-                <button type="submit" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px" title="Remove Price">×</button>
+                <button type="submit" style="background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; font-size: 18px;" title="Remove Price">×</button>
               </form>
             </div>
           </td>
@@ -59,7 +59,10 @@
       </table>
     </div>
     {% else %}
-    <div class="empty-state"><div class="icon">💰</div><h3>No prices logged</h3><p>Log a price on the Vendors page.</p></div>
+    <div class="empty-state">
+        <h3>No prices logged</h3>
+        <p>Log a price on the Vendors page.</p>
+    </div>
     {% endif %}
   </div>
 
@@ -73,21 +76,21 @@
         {% set avg = total / (prices|length) %}
         <div style="text-align:center;padding:10px 0 24px">
           <div style="color:var(--muted);font-size:13px;margin-bottom:8px">Market Average</div>
-          <div style="font-size:32px;font-weight:700">₹{{ "%.2f"|format(avg) }}</div>
+          <div style="font-size:32px;font-weight:700; color:var(--text)">₹{{ "%.2f"|format(avg) }}</div>
         </div>
         
         <div style="display:flex;flex-direction:column;gap:12px">
             <div style="display:flex;justify-content:space-between;font-size:14px">
                 <span style="color:var(--muted)">Price Range</span>
-                <span style="font-weight:600">₹{{ "%.2f"|format(min_price) }} - ₹{{ "%.2f"|format(max_price) }}</span>
+                <span style="font-weight:600; color:var(--text)">₹{{ "%.2f"|format(min_price) }} - ₹{{ "%.2f"|format(max_price) }}</span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:14px">
                 <span style="color:var(--muted)">Best Vendor</span>
-                <span style="color:#10B981;font-weight:600">{{ prices[0].vendor.name }}</span>
+                <span style="color:var(--green);font-weight:600">{{ prices[0].vendor.name }}</span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:14px">
                 <span style="color:var(--muted)">Potential Savings</span>
-                <span style="font-weight:600;color:#10B981">₹{{ "%.2f"|format(max_price - min_price) }} / unit</span>
+                <span style="font-weight:600;color:var(--green)">₹{{ "%.2f"|format(max_price - min_price) }} / unit</span>
             </div>
         </div>
       {% else %}

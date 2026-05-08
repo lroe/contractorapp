@@ -1,117 +1,117 @@
 {% extends "base.html" %}
-
-{% block title %}Workforce & Attendance - Contractor DB{% endblock %}
-
+{% block title %}Workforce & Attendance{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div>
-        <h1>Workforce & Attendance</h1>
-        <p>Monitor daily man-days, labor costs, and visual attendance records.</p>
-    </div>
+  <div>
+    <div class="page-title">Workforce & Attendance</div>
+    <div class="page-subtitle">Monitor daily man-days, labor costs, and visual attendance records.</div>
+  </div>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
+  <div class="card-body">
     <form method="GET" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
-        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-            <label>Project</label>
-            <select name="project_id" onchange="this.form.submit()">
-                {% for p in projects %}
-                <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group" style="min-width: 180px; margin-bottom: 0;">
-            <label>Date</label>
-            <input type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
-        </div>
+      <div class="form-group" style="flex: 1; min-width: 200px;">
+        <label>Project</label>
+        <select name="project_id" onchange="this.form.submit()">
+          {% for p in projects %}
+          <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="min-width: 180px;">
+        <label>Date</label>
+        <input type="date" name="date" value="{{ selected_date }}" onchange="this.form.submit()">
+      </div>
     </form>
+  </div>
 </div>
 
 {% if selected_project_id %}
-    <div class="stats-grid">
+    <div class="stat-grid">
         <div class="stat-card">
-            <h3>Total Workers</h3>
-            <p class="stat-value">{{ summary | length }}</p>
+            <div class="stat-label">Total Workers</div>
+            <div class="stat-value">{{ summary | length }}</div>
         </div>
         <div class="stat-card">
-            <h3>Present</h3>
-            <p class="stat-value" style="color: #16a34a;">{{ summary | selectattr('status', 'equalto', 'present') | list | length }}</p>
+            <div class="stat-label">Present</div>
+            <div class="stat-value" style="color: var(--green);">{{ summary | selectattr('status', 'equalto', 'present') | list | length }}</div>
         </div>
         <div class="stat-card">
-            <h3>Half Day</h3>
-            <p class="stat-value" style="color: #d97706;">{{ summary | selectattr('status', 'equalto', 'half_day') | list | length }}</p>
+            <div class="stat-label">Half Day</div>
+            <div class="stat-value" style="color: var(--amber);">{{ summary | selectattr('status', 'equalto', 'half_day') | list | length }}</div>
         </div>
         <div class="stat-card">
-            <h3>Absent</h3>
-            <p class="stat-value" style="color: #dc2626;">{{ summary | selectattr('status', 'equalto', 'absent') | list | length }}</p>
+            <div class="stat-label">Absent</div>
+            <div class="stat-value" style="color: var(--red);">{{ summary | selectattr('status', 'equalto', 'absent') | list | length }}</div>
         </div>
         <div class="stat-card">
-            <h3>Labor Cost</h3>
-            <p class="stat-value">₹{{ "%.0f" | format(summary | sum(attribute='cost')) }}</p>
+            <div class="stat-label">Labor Cost</div>
+            <div class="stat-value">₹{{ "%.0f" | format(summary | sum(attribute='cost')) }}</div>
         </div>
     </div>
 
     {% if photos %}
     <div class="card" style="margin-bottom: 24px;">
-        <h2 style="margin-bottom: 16px;">Gang Photos</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
-            {% for photo in photos %}
-            <div style="border-radius: 12px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0;">
-                <img src="{{ photo.url }}" alt="Gang Photo" style="width: 100%; height: 160px; object-fit: cover; cursor: pointer;" onclick="window.open(this.src)">
-                <div style="padding: 10px 12px;">
-                    <strong style="font-size: 13px;">{{ photo.gang_name }}</strong><br>
-                    <small style="color: #64748b;">{{ photo.time.strftime('%I:%M %p') }}</small>
+        <div class="card-header">
+            <span class="card-title">Gang Photos</span>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+                {% for photo in photos %}
+                <div style="border: 1px solid var(--border); background: #fff; padding: 4px;">
+                    <img src="{{ photo.url }}" alt="Gang Photo" style="width: 100%; height: 140px; object-fit: cover; cursor: pointer; border: 1px solid #eee;" onclick="window.open(this.src)">
+                    <div style="padding: 8px 4px;">
+                        <strong style="font-size: 13px; color: var(--text);">{{ photo.gang_name }}</strong><br>
+                        <small style="color: var(--muted);">{{ photo.time.strftime('%I:%M %p') }}</small>
+                    </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
     </div>
     {% endif %}
 
     <div class="card">
-        <h2 style="margin-bottom: 16px;">Attendance Ledger — {{ selected_date }}</h2>
+        <div class="card-header">
+            <span class="card-title">Attendance Ledger — {{ selected_date }}</span>
+        </div>
         {% if summary %}
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Worker Name</th>
-                    <th>Gang</th>
-                    <th>Status</th>
-                    <th>Daily Rate</th>
-                    <th>Cost</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in summary %}
-                <tr>
-                    <td><strong>{{ row.worker_name }}</strong></td>
-                    <td>{{ row.gang or '—' }}</td>
-                    <td>
-                        <span style="
-                            display: inline-block;
-                            padding: 3px 10px;
-                            border-radius: 100px;
-                            font-size: 11px;
-                            font-weight: 600;
-                            {% if row.status == 'present' %}background: #DCFCE7; color: #166534;
-                            {% elif row.status == 'half_day' %}background: #FEF9C3; color: #854D0E;
-                            {% else %}background: #FEE2E2; color: #991B1B;{% endif %}
-                        ">{{ row.status | replace('_', ' ') | upper }}</span>
-                    </td>
-                    <td>₹{{ "%.0f" | format(row.rate) }}</td>
-                    <td>₹{{ "%.0f" | format(row.cost) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr style="font-weight: bold; background: #f8fafc;">
-                    <td colspan="4" style="text-align: right;">Total Labor Cost</td>
-                    <td>₹{{ "%.0f" | format(summary | sum(attribute='cost')) }}</td>
-                </tr>
-            </tfoot>
-        </table>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Worker Name</th>
+                        <th>Gang</th>
+                        <th>Status</th>
+                        <th>Daily Rate</th>
+                        <th>Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in summary %}
+                    <tr>
+                        <td><strong>{{ row.worker_name }}</strong></td>
+                        <td>{{ row.gang or '—' }}</td>
+                        <td>
+                            {% set badge_cls = 'received' if row.status == 'present' else ('pending' if row.status == 'half_day' else 'cancelled') %}
+                            <span class="badge badge-{{ badge_cls }}">{{ row.status | replace('_', ' ') | title }}</span>
+                        </td>
+                        <td>₹{{ "%.0f" | format(row.rate) }}</td>
+                        <td>₹{{ "%.0f" | format(row.cost) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight: bold; background: #f8f8f8;">
+                        <td colspan="4" style="text-align: right; padding: 10px 12px; border-top: 1px solid var(--border);">Total Labor Cost</td>
+                        <td style="padding: 10px 12px; border-top: 1px solid var(--border);">₹{{ "%.0f" | format(summary | sum(attribute='cost')) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
         {% else %}
-        <p style="text-align: center; color: #94a3b8; padding: 32px 0;">No attendance records found for this date. Attendance is logged from the mobile app.</p>
+        <div class="empty-state">No attendance records found for this date. Attendance is logged from the mobile app.</div>
         {% endif %}
     </div>
 {% endif %}

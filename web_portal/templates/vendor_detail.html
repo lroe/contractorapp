@@ -7,10 +7,10 @@
     <div class="page-subtitle">Supplier Profile & Catalog</div>
   </div>
   <div style="display:flex;gap:10px">
-    <a href="{{ url_for('vendors') }}" class="btn btn-ghost">← All Vendors</a>
+    <a href="{{ url_for('vendors') }}" class="btn btn-secondary">← All Vendors</a>
     {% if vendor.is_active %}
     <form method="POST" action="{{ url_for('deactivate_vendor', vendor_id=vendor.id) }}" onsubmit="return confirm('Deactivate this vendor?')">
-      <button class="btn btn-ghost" type="submit" style="color:#DC2626">Deactivate</button>
+      <button class="btn btn-red" type="submit">Deactivate</button>
     </form>
     {% endif %}
   </div>
@@ -24,24 +24,24 @@
     <div class="card-body">
       <div style="margin-bottom:16px">
         <label style="color:var(--muted);font-size:12px;text-transform:uppercase">Phone</label>
-        <div style="font-weight:500">{{ vendor.phone or '—' }}</div>
+        <div style="font-weight:500; color:var(--text)">{{ vendor.phone or '—' }}</div>
       </div>
       <div style="margin-bottom:16px">
         <label style="color:var(--muted);font-size:12px;text-transform:uppercase">Email</label>
-        <div style="font-weight:500">{{ vendor.email or '—' }}</div>
+        <div style="font-weight:500; color:var(--text)">{{ vendor.email or '—' }}</div>
       </div>
       <div style="margin-bottom:16px">
         <label style="color:var(--muted);font-size:12px;text-transform:uppercase">GSTIN</label>
-        <div style="font-family:monospace;background:#F1F5F9;padding:4px 8px;border-radius:4px;display:inline-block;font-size:13px">{{ vendor.gstin or '—' }}</div>
+        <div style="font-family:monospace;background:var(--accent-dim);padding:4px 8px;border-radius:2px;display:inline-block;font-size:13px;border:1px solid var(--border)">{{ vendor.gstin or '—' }}</div>
       </div>
       <div style="margin-bottom:16px">
         <label style="color:var(--muted);font-size:12px;text-transform:uppercase">Address</label>
-        <div style="font-size:14px;line-height:1.4">{{ vendor.address or '—' }}</div>
+        <div style="font-size:14px;line-height:1.4; color:var(--text)">{{ vendor.address or '—' }}</div>
       </div>
       <div>
         <label style="color:var(--muted);font-size:12px;text-transform:uppercase">Status</label>
         <div>
-          <span class="badge {{ 'badge-received' if vendor.is_active else 'badge-cancelled' }}">
+          <span class="badge badge-{{ 'received' if vendor.is_active else 'cancelled' }}">
             {{ 'Active' if vendor.is_active else 'Inactive' }}
           </span>
         </div>
@@ -64,7 +64,7 @@
             <th>Price per Unit</th>
             <th>Unit</th>
             <th>Last Updated</th>
-            <th>Compare</th>
+            <th style="text-align: right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -75,11 +75,11 @@
             <td style="font-weight:700;color:var(--accent)">₹{{ "%.2f"|format(p.price_per_unit) }}</td>
             <td>{{ p.material.unit if p.material else '—' }}</td>
             <td style="color:var(--muted);font-size:12px">{{ p.effective_date.strftime('%d %b %Y') if p.effective_date else '—' }}</td>
-            <td>
-              <div style="display:flex;gap:4px">
-                <a href="{{ url_for('vendor_prices_view', material_id=p.material_id) }}" class="btn btn-ghost btn-sm">Compare</a>
+            <td style="text-align: right">
+              <div style="display:flex;gap:6px;justify-content:flex-end">
+                <a href="{{ url_for('vendor_prices_view', material_id=p.material_id) }}" class="btn btn-secondary btn-sm">Compare</a>
                 <form method="POST" action="{{ url_for('delete_vendor_price', price_id=p.id) }}" style="display:inline" onsubmit="return confirm('Remove this price point?')">
-                  <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red)">Remove</button>
+                  <button type="submit" class="btn btn-red btn-sm">Remove</button>
                 </form>
               </div>
             </td>
@@ -89,8 +89,7 @@
       </table>
     </div>
     {% else %}
-    <div class="empty-state" style="padding:60px">
-      <div class="icon">🏷️</div>
+    <div class="empty-state">
       <h3>No prices logged for this vendor</h3>
       <p>Go to the Vendors page to log a price for this supplier.</p>
     </div>

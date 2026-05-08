@@ -1,130 +1,129 @@
 {% extends "base.html" %}
-
-{% block title %}Finance & Ledger - Contractor DB{% endblock %}
-
+{% block title %}Finance & Ledger{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div>
-        <h1>Finance & Ledger</h1>
-        <p>Record project expenses, income, and keep finance details in one place.</p>
-    </div>
+  <div>
+    <div class="page-title">Finance & Ledger</div>
+    <div class="page-subtitle">Record project expenses, income, and keep finance details in one place.</div>
+  </div>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
-    <h2 style="margin-bottom: 16px;">Record a Transaction</h2>
+  <div class="card-header">
+    <span class="card-title">Record a Transaction</span>
+  </div>
+  <div class="card-body">
     <form method="POST" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="form-group" style="margin-bottom: 0;">
-            <label>Project</label>
-            <select name="project_id" required>
-                {% for p in projects %}
-                <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-            <label>Type</label>
-            <select name="type" required>
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-            </select>
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-            <label>Category</label>
-            <select name="category">
-                <option value="materials">Materials</option>
-                <option value="labor">Labor</option>
-                <option value="equipment">Equipment</option>
-                <option value="subcontractor">Subcontractor</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-            <label>Amount</label>
-            <input type="number" name="amount" step="0.01" min="0" required placeholder="0.00">
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-            <label>Transaction Date</label>
-            <input type="date" name="transaction_date">
-        </div>
-        <div class="form-group" style="grid-column: span 2; margin-bottom: 0;">
-            <label>Description</label>
-            <textarea name="description" rows="3" placeholder="Notes or invoice details"></textarea>
-        </div>
-        <div style="grid-column: span 2; display: flex; gap: 12px; justify-content: flex-end;">
-            <button type="submit" class="btn btn-primary">Save Transaction</button>
-        </div>
+      <div class="form-group">
+        <label>Project</label>
+        <select name="project_id" required>
+          {% for p in projects %}
+          <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select name="type" required>
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select name="category">
+          <option value="materials">Materials</option>
+          <option value="labor">Labor</option>
+          <option value="equipment">Equipment</option>
+          <option value="subcontractor">Subcontractor</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount</label>
+        <input type="number" name="amount" step="0.01" min="0" required placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Transaction Date</label>
+        <input type="date" name="transaction_date">
+      </div>
+      <div class="form-group" style="grid-column: span 2;">
+        <label>Description</label>
+        <textarea name="description" rows="2" placeholder="Notes or invoice details"></textarea>
+      </div>
+      <div style="grid-column: span 2; display: flex; justify-content: flex-end;">
+        <button type="submit" class="btn btn-primary">Save Transaction</button>
+      </div>
     </form>
+  </div>
 </div>
 
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
-        <div>
-            <h2 style="margin: 0 0 8px 0;">Recent Transactions</h2>
-            <p style="margin: 0; color: #64748b;">Filter and review recent project finance activity.</p>
-        </div>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <form method="GET" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Project</label>
-                    <select name="project_id" onchange="this.form.submit()">
-                        <option value="">All Projects</option>
-                        {% for p in projects %}
-                        <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Type</label>
-                    <select name="type" onchange="this.form.submit()">
-                        <option value="">All</option>
-                        <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>Expense</option>
-                        <option value="income" {% if selected_type == 'income' %}selected{% endif %}>Income</option>
-                    </select>
-                </div>
-            </form>
-        </div>
+  <div class="card-header">
+    <span class="card-title">Recent Transactions</span>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <form method="GET" style="display: flex; gap: 12px; align-items: center;">
+        <select name="project_id" onchange="this.form.submit()" style="width: auto;">
+          <option value="">All Projects</option>
+          {% for p in projects %}
+          <option value="{{ p.id }}" {% if p.id|string == selected_project_id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="type" onchange="this.form.submit()" style="width: auto;">
+          <option value="">All Types</option>
+          <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>Expense</option>
+          <option value="income" {% if selected_type == 'income' %}selected{% endif %}>Income</option>
+        </select>
+      </form>
     </div>
+  </div>
 
-    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <div class="summary-card">
-            <div style="font-size: 14px; color: #64748b;">Total Expenses</div>
-            <div style="font-size: 24px; font-weight: 700; color: #dc2626;">₹{{ '%.2f' | format(totals.expense) }}</div>
+  <div class="card-body">
+    <div class="stat-grid" style="margin-bottom: 20px;">
+        <div class="stat-card">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value" style="color: var(--red);">₹{{ '%.2f' | format(totals.expense) }}</div>
         </div>
-        <div class="summary-card">
-            <div style="font-size: 14px; color: #64748b;">Total Income</div>
-            <div style="font-size: 24px; font-weight: 700; color: #16a34a;">₹{{ '%.2f' | format(totals.income) }}</div>
+        <div class="stat-card">
+            <div class="stat-label">Total Income</div>
+            <div class="stat-value" style="color: var(--green);">₹{{ '%.2f' | format(totals.income) }}</div>
         </div>
     </div>
 
     {% if transactions %}
-    <table class="data-table">
+    <div class="table-wrap">
+      <table>
         <thead>
-            <tr>
-                <th>Date</th>
-                <th>Project</th>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Amount</th>
-                <th>Description</th>
-                <th>Recorded</th>
-            </tr>
+          <tr>
+            <th>Date</th>
+            <th>Project</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Description</th>
+          </tr>
         </thead>
         <tbody>
-            {% for tx in transactions %}
-            <tr>
-                <td>{{ tx.transaction_date.strftime('%d %b %Y') }}</td>
-                <td>{{ tx.project.name if tx.project else 'Unknown' }}</td>
-                <td>{{ tx.type | title }}</td>
-                <td>{{ tx.category | title }}</td>
-                <td style="font-weight: 600;">₹{{ '%.2f' | format(tx.amount) }}</td>
-                <td>{{ tx.description or '-' }}</td>
-                <td>{{ tx.created_at.strftime('%d %b %Y') }}</td>
-            </tr>
-            {% endfor %}
+          {% for tx in transactions %}
+          <tr>
+            <td>{{ tx.transaction_date.strftime('%d %b %Y') }}</td>
+            <td>{{ tx.project.name if tx.project else 'Unknown' }}</td>
+            <td>
+              <span class="badge badge-{{ 'cancelled' if tx.type == 'expense' else 'received' }}">
+                {{ tx.type | title }}
+              </span>
+            </td>
+            <td>{{ tx.category | title }}</td>
+            <td style="font-weight: 600;">₹{{ '%.2f' | format(tx.amount) }}</td>
+            <td>{{ tx.description or '-' }}</td>
+          </tr>
+          {% endfor %}
         </tbody>
-    </table>
+      </table>
+    </div>
     {% else %}
-    <p style="text-align: center; color: #94a3b8; padding: 32px 0;">No finance records yet. Add the first transaction above to begin tracking.</p>
+    <div class="empty-state">No finance records yet. Add the first transaction above to begin tracking.</div>
     {% endif %}
+  </div>
 </div>
 {% endblock %}
